@@ -804,11 +804,11 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
         return ThemeManager.Library.Options[SchemeIndex]
     end
 
-    local BackgroundColor = CreateColorOption("Background color", "BackgroundColor")
-    local MainColor = CreateColorOption("Main color", "MainColor")
-    local AccentColor = CreateColorOption("Accent color", "AccentColor")
-    local OutlineColor = CreateColorOption("Outline color", "OutlineColor")
-    local FontColor = CreateColorOption("Font color", "FontColor")
+    local BackgroundColor = CreateColorOption("背景颜色", "BackgroundColor")
+    local MainColor = CreateColorOption("主颜色", "MainColor")
+    local AccentColor = CreateColorOption("强调颜色", "AccentColor")
+    local OutlineColor = CreateColorOption("轮廓颜色", "OutlineColor")
+    local FontColor = CreateColorOption("字体颜色", "FontColor")
 
     --// Accessibility: live contrast readout for the colors above
     ThemeManager.ContrastLabel = Themesbox:AddLabel({
