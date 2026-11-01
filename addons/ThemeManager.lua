@@ -270,7 +270,7 @@ function ThemeManager:CheckFolderTree()
 end
 
 function ThemeManager:SetFolder(Folder: string)
-    assert(IsValidFolderPath(Folder), "Invalid path provided")
+    assert(IsValidFolderPath(Folder), "提供的路径无效")
 
     ThemeManager.Folder = Folder
     ThemeManager:BuildFolderTree()
@@ -286,7 +286,7 @@ function ThemeManager:ReloadCustomThemes()
     pcall(makefolder, SettingsPath)
     local SuccessList, Files = pcall(listfiles, SettingsPath)
     if not (SuccessList and typeof(Files) == "table") then
-        ThemeManager.Library:Notify(string.format("Failed to load theme list: %s", tostring(Files)))
+        ThemeManager.Library:Notify(string.format("无法加载主题列表: %s", tostring(Files)))
         return {}
     end
 
@@ -344,16 +344,16 @@ end
 
 function ThemeManager:SaveCustomTheme(ThemeName: string): any
     if IsStringEmpty(ThemeName) then
-        return false, "Invalid theme name provided"
+        return false, "提供的主题名称无效"
     end
 
     if string.lower(ThemeName) == "default" then
-        return false, "Invalid theme name provided"
+        return false, "提供的主题名称无效"
     end
 
     local ThemePath = GetThemePath(ThemeName)
     if ThemePath == false then
-        return false, "Invalid theme name provided"
+        return false, "提供的主题名称无效"
     end
 
     ThemeManager:CheckFolderTree()
@@ -366,7 +366,7 @@ function ThemeManager:SaveCustomTheme(ThemeName: string): any
 
     local SuccessWrite, ErrorMessage = pcall(writefile, ThemePath, EncodedData)
     if not SuccessWrite then
-        return false, "Failed to write theme file: " .. tostring(ErrorMessage)
+        return false, "无法写入主题文件: " .. tostring(ErrorMessage)
     end
 
     return true
@@ -374,17 +374,17 @@ end
 
 function ThemeManager:Delete(ThemeName: string): (boolean | string?)
     if IsStringEmpty(ThemeName) then
-        return false, "No theme is selected"
+        return false, "未选择主题"
     end
 
     local ThemePath = GetThemePath(ThemeName)
     if ThemePath == false or not isfile(ThemePath) then
-        return false, "Theme file does not exist"
+        return false, "主题文件不存在"
     end
 
     local SuccessDelete, ErrorMessage = pcall(delfile, ThemePath)
     if not SuccessDelete then
-        return false, "Failed to delete theme file: " .. tostring(ErrorMessage)
+        return false, "删除主题文件失败: " .. tostring(ErrorMessage)
     end
 
     if ThemeName == ThemeManager.DefaultThemeName then
@@ -400,11 +400,11 @@ function ThemeManager:GetDefaultTheme(): (string, boolean, string?)
 
     local DefaultThemePath = GetDefaultThemePath()
     if DefaultThemePath == false then
-        return "none", false, "Invalid path provided"
+        return "none", false, "提供的路径无效"
     end
 
     if not isfile(DefaultThemePath) then
-        return "none", false, "Default theme is not set"
+        return "none", false, "默认主题未设置"
     end
 
     local SuccessRead, DefaultThemeName = pcall(readfile, DefaultThemePath)
@@ -414,7 +414,7 @@ function ThemeManager:GetDefaultTheme(): (string, boolean, string?)
 
     local ConfigExists = DoesThemeExist(DefaultThemeName, true)
     if not ConfigExists then
-        return "none", false, "Theme file not found"
+        return "none", false, "主题文件未找到"
     end
 
     ThemeManager.DefaultThemeName = DefaultThemeName
@@ -481,18 +481,18 @@ end
 
 function ThemeManager:SaveDefault(ThemeName: string): (boolean, string?)
     if IsStringEmpty(ThemeName) then
-        return false, "No theme is selected"
+        return false, "未选择主题"
     end
 
     ThemeManager:CheckFolderTree()
 
     local DefaultThemePath = GetDefaultThemePath()
     if DefaultThemePath == false then
-        return false, "Invalid path provided"
+        return false, "提供的路径无效"
     end
 
     if not DoesThemeExist(ThemeName, true) then
-        return false, "Theme does not exist"
+        return false, "主题不存在"
     end
 
     local SuccessWrite, ErrorMessage = pcall(writefile, DefaultThemePath, ThemeName)
@@ -508,7 +508,7 @@ function ThemeManager:LoadDefault()
     local ThemeName, Success, FetchErrorMessage = ThemeManager:GetDefaultTheme()
     if not Success or FetchErrorMessage then
         if FetchErrorMessage ~= "Default theme is not set" then
-            ThemeManager.Library:Notify(string.format("Failed to apply default theme: %s", FetchErrorMessage))
+            ThemeManager.Library:Notify(string.format("无法应用默认主题: %s", FetchErrorMessage))
         end
 
         return
@@ -521,11 +521,11 @@ function ThemeManager:LoadDefault()
 
     local SuccessLoad, LoadErrorMessage = ThemeManager:ApplyTheme(ThemeName)
     if not SuccessLoad then
-        ThemeManager.Library:Notify(string.format("Failed to apply default theme: %s", LoadErrorMessage))
+        ThemeManager.Library:Notify(string.format("无法应用默认主题: %s", LoadErrorMessage))
         return
     end
 
-    ThemeManager.Library:Notify(string.format("Successfully applied default theme %q", ThemeName))
+    ThemeManager.Library:Notify(string.format("默认主题已成功应用 %q", ThemeName))
 end
 
 function ThemeManager:DeleteDefaultTheme(): (boolean, string?)
@@ -533,11 +533,11 @@ function ThemeManager:DeleteDefaultTheme(): (boolean, string?)
 
     local DefaultThemePath = GetDefaultThemePath()
     if DefaultThemePath == false then
-        return false, "Invalid path provided"
+        return false, "提供的路径无效"
     end
 
     if not isfile(DefaultThemePath) then
-        return false, "Default theme is not set"
+        return false, "默认主题未设置"
     end
 
     local SuccessDelete, ErrorMessage = pcall(delfile, DefaultThemePath)
@@ -603,7 +603,7 @@ function ThemeManager:UpdateContrastWarning()
         Library.Registry[TextLabel].TextColor3 = "FontColor"
     else
         ContrastLabel:SetText(string.format(
-            "Low contrast (%.1f:1) between %s. Aim for at least %.1f:1 so text stays readable.",
+            "低对比度 (%.1f:1) 在 %s 之间. 目标是至少 %.1f:1 以保持文本可读性.",
             Report.Ratio, Report.PairName, ContrastWarnThreshold
         ))
 
@@ -612,9 +612,9 @@ function ThemeManager:UpdateContrastWarning()
 
         if not ThemeManager.ContrastWasPoor then
             Library:Notify({
-                Title = "Low contrast theme",
+                Title = "低对比度主题",
                 Description = string.format(
-                    "Your %s has a contrast ratio of %.1f:1, below the recommended %.1f:1. Text may be hard to read.",
+                    "你的%s对比度为%.1f:1,低于推荐的%.1f:1 文本可能难以阅读",
                     Report.PairName, Report.Ratio, ContrastWarnThreshold
                 ),
                 Time = 10,
@@ -644,7 +644,7 @@ end
 --// Split out of ApplyTheme so imported JSON can go through the same path as themes loaded from disk.
 function ThemeManager:ApplyThemeData(ThemeData: any): (boolean, string?)
     if typeof(ThemeData) ~= "table" then
-        return false, "Invalid theme data"
+        return false, "提供的主题数据无效"
     end
 
     local Library = ThemeManager.Library
@@ -687,14 +687,14 @@ end
 
 function ThemeManager:ApplyTheme(ThemeName: string)
     if IsStringEmpty(ThemeName) then
-        return false, "No theme is selected"
+        return false, "未选择主题"
     end
 
     local CustomThemeData = ThemeManager:GetCustomTheme(ThemeName)
     local Data = CustomThemeData or ThemeManager.BuiltInThemes[ThemeName]
     
     if not Data then
-        return false, "Theme not found"
+        return false, "主题未找到"
     end
     
     local ThemeData = CustomThemeData or Data[2]
@@ -707,7 +707,7 @@ function ThemeManager:SaveJSON(): (string, boolean, string?)
 
     local SuccessEncode, EncodedData = pcall(HttpService.JSONEncode, HttpService, ThemeData)
     if not SuccessEncode then
-        return "", false, "Failed to encode data"
+        return "", false, "编码数据失败"
     end
 
     return EncodedData, true
@@ -715,12 +715,12 @@ end
 
 function ThemeManager:LoadJSON(Content: string): (boolean, string?)
     if IsStringEmpty(Content) then
-        return false, "No JSON provided"
+        return false, "未提供JSON数据"
     end
 
     local SuccessDecode, Decoded = pcall(HttpService.JSONDecode, HttpService, Content)
     if not SuccessDecode or not IsValidThemeData(Decoded) then
-        return false, "Failed to decode theme data"
+        return false, "无法解码主题数据"
     end
 
     return ThemeManager:ApplyThemeData(Decoded)
@@ -863,7 +863,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
         local ThemeName = ThemeList.Value
         ThemeManager:SaveDefault(ThemeName)
 
-        ThemeManager.Library:Notify(string.format("Successfully set default theme to %q", ThemeName))
+        ThemeManager.Library:Notify(string.format("成功设置默认主题为 %q", ThemeName))
         RefreshDefaultThemeLabel()
     end)
 
@@ -899,7 +899,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
             "ThemeManager_LowContrastSave",
             "低对比度主题",
             string.format(
-                "此主题在 %s 之间具有 %.1f:1 的对比度比率，低于推荐的 %.1f:1。文本可能难以阅读。是否仍要保存？",
+                "此主题在 %s 之间具有 %.1f:1 的对比度比率，低于推荐的 %.1f:1.文本可能难以阅读.是否仍要保存?",
                 Report.PairName, Report.Ratio, ContrastWarnThreshold
             ),
 
@@ -927,7 +927,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
 
             "ThemeManager_CreateTheme",
             "主题已存在",
-            string.format("名为 %q 的自定义主题已存在。覆盖它将用您当前的颜色替换它。", Name),
+            string.format("名为 %q 的自定义主题已存在.覆盖它将用您当前的颜色替换它.", Name),
 
             "覆盖",
             function()
@@ -986,7 +986,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
 
             "ThemeManager_OverwriteTheme",
             "覆盖主题",
-            string.format("你确定要使用当前颜色覆盖 %q 吗？此操作无法撤销。", Name),
+            string.format("你确定要使用当前颜色覆盖 %q 吗?此操作无法撤销.", Name),
 
             "覆盖",
             function()
@@ -995,7 +995,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
         )
     end)
 
-    Themesbox:AddButton("Delete theme", function()
+    Themesbox:AddButton("删除主题", function()
         local Name = CustomThemeList.Value
         if IsStringEmpty(Name) then
             ThemeManager.Library:Notify("请先选择一个主题")
@@ -1008,10 +1008,10 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
             end,
 
             "ThemeManager_DeleteTheme",
-            "Delete theme",
-            string.format("你确定要删除 %q 吗？此操作无法撤销。", Name),
+            "删除主题",
+            string.format("你确定要删除 %q 吗?此操作无法撤销.", Name),
             
-            "Delete",
+            "删除",
             function()
                 local Success, ErrorMessage = ThemeManager:Delete(Name)
                 if not Success then
@@ -1025,9 +1025,9 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
         )
     end)
 
-    Themesbox:AddButton("Refresh list", RefreshList)
+    Themesbox:AddButton("刷新列表", RefreshList)
 
-    Themesbox:AddButton("Set as default", function()
+    Themesbox:AddButton("设置为默认主题", function()
         local Name = CustomThemeList.Value
         if IsStringEmpty(Name) then
             ThemeManager.Library:Notify("请先选择一个主题.")
@@ -1047,7 +1047,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
 
             "ThemeManager_ResetDefault",
             "重置默认主题",
-            "你确定要清除默认主题吗？库将在下次加载时恢复到其内置默认值。",
+            "你确定要清除默认主题吗?库将在下次加载时恢复到其内置默认值.",
             
             "重置",
             function()
@@ -1086,7 +1086,7 @@ function ThemeManager:CreateThemeManager(Themesbox: any)
 
             "ThemeManager_ImportTheme",
             "导入主题",
-            "你确定要导入这个主题吗？你当前的颜色设置会被覆盖",
+            "你确定要导入这个主题吗?你当前的颜色设置会被覆盖",
 
             "导入",
             function()
