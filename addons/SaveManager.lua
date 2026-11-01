@@ -834,7 +834,7 @@ function SaveManager:BuildConfigSection(Tab: any, IconName: string)
     local function RefreshAutoloadConfigLabel()
         local AutoloadConfigName, _Success, _ErrorMessage = SaveManager:GetAutoloadConfig()
 
-        AutoloadConfigLabel:SetText(string.format("Current autoload config: %s", AutoloadConfigName))
+        AutoloadConfigLabel:SetText(string.format("当前自动加载的Config: %s", AutoloadConfigName))
         if ConfigList then RefreshList() end
     end
 
