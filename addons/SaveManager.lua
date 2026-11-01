@@ -1099,7 +1099,7 @@ function SaveManager:BuildConfigSection(Tab: any, IconName: string)
         )
     end)
 
-    ConfigurationBox:AddButton("Export current config", function()
+    ConfigurationBox:AddButton("导出当前Config", function()
         local EncodedData, Success, ErrorMessage = SaveManager:SaveJSON()
         if not Success  then
             SaveManager.Library:Notify(ErrorMessage)
@@ -1109,7 +1109,7 @@ function SaveManager:BuildConfigSection(Tab: any, IconName: string)
         ConfigJSONInput:SetValue(EncodedData)
         if setclipboard then
             setclipboard(EncodedData)
-            SaveManager.Library:Notify("Copied config to your clipboard")
+            SaveManager.Library:Notify("复制你的Config Json到剪贴板")
         end
     end)
 
