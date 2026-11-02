@@ -507,7 +507,7 @@ end
 function ThemeManager:LoadDefault()
     local ThemeName, Success, FetchErrorMessage = ThemeManager:GetDefaultTheme()
     if not Success or FetchErrorMessage then
-        if FetchErrorMessage ~= "Default theme is not set" then
+        if FetchErrorMessage ~= "默认主题未设置" then
             ThemeManager.Library:Notify(string.format("无法应用默认主题: %s", FetchErrorMessage))
         end
 
