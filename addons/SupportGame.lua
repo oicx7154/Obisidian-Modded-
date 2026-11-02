@@ -53,7 +53,7 @@ return function(Tab, JSON_URL)
 
     local Dropdown
 
-    Dropdown = Tab.InfoTab:AddParagraphDropdown({
+    Dropdown = Tab.support:AddParagraphDropdown({
         Title = "作者支持的游戏",
         Side = "Left",
         Mode = "Inline",
