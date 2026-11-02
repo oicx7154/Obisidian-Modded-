@@ -41,7 +41,11 @@ return function(Groupbox)
         if type(data.image) == "string" and data.image ~= "" then
             imageId = data.image
         end
-
+        
+        if type(data.Name) == "string" and data.Name ~= "" then
+            Groupbox.mz:SetDescription(data.Name)
+        end
+        
         local latestVersion = tostring(data.latest or "")
 
         for _, entry in ipairs(data.updates) do
