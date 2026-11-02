@@ -14884,6 +14884,7 @@ function Library:CreateWindow(WindowInfo)
                 Mode = Info.Mode == "Floating" and "Floating" or "Inline",
                 Visible = Info.Visible ~= false,
                 Opened = false,
+                ListOnly = false,
                 Destroyed = false,
                 Callback = Info.Callback,
                 Connections = {},
@@ -14997,11 +14998,6 @@ function Library:CreateWindow(WindowInfo)
             ValueLabel.Size = UDim2.new(1, -48, 0, 16)
             ValueLabel.ZIndex = 2
 
-            -- 箭头放在框的右侧
-            Arrow.Position = UDim2.new(1, -14, 0, 33)
-            Arrow.AnchorPoint = Vector2.new(1, 0.5)
-            Arrow.Size = UDim2.fromOffset(16, 16)
-            Arrow.ZIndex = 2
             -- Dropdown 和段落联合：显示公告内容
             local ContentLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
@@ -15186,6 +15182,29 @@ function Library:CreateWindow(WindowInfo)
                     end
                 end
             end
+            function Dropdown:SetListOnly(enabled)
+                if self.Destroyed then return end
+
+                enabled = enabled == true
+
+                if enabled and self.Mode ~= "Inline" then
+                    warn("SetListOnly 只支持 Inline 模式")
+                    return
+                end
+
+                self.ListOnly = enabled
+
+                -- 隐藏或恢复选中框、文字和箭头
+                SelectBox.Visible = not enabled
+                ValueLabel.Visible = not enabled
+                Arrow.Visible = not enabled
+
+                -- 隐藏选中框后缩短标题区域
+                Header.Size = UDim2.new(1, 0, 0, enabled and 28 or 48)
+
+                -- 列表模式保持展开；恢复普通模式时先收起
+                setOpen(enabled)
+            end
             -- 重建选项时停止旧动画，并根据当前状态更新高度
             stopInlineTween()
 
@@ -15238,7 +15257,7 @@ function Library:CreateWindow(WindowInfo)
                         syncContent()
                         runCallback()
 
-                        if Info.CloseOnSelect ~= false then
+                        if not Dropdown.ListOnly and Info.CloseOnSelect ~= false then
                             setOpen(false)
                         end
                     end)
@@ -15336,10 +15355,13 @@ function Library:CreateWindow(WindowInfo)
             table.insert(
                 Dropdown.Connections,
                 Header.MouseButton1Click:Connect(function()
+                    if Dropdown.ListOnly then
+                        return
+                    end
+
                     setOpen(not Dropdown.Opened)
                 end)
             )
-
             -- Default 可以是数组索引，也可以是选项值
             if type(Info.Default) == "number" then
                 Dropdown.Value = Dropdown.Values[Info.Default]
@@ -15352,10 +15374,11 @@ function Library:CreateWindow(WindowInfo)
             buildValues()
             syncContent()
 
-            if Info.DefaultOpen == true then
+            if Info.ListOnly == true then
+                Dropdown:SetListOnly(true)
+            elseif Info.DefaultOpen == true then
                 setOpen(true)
             end
-
             return Dropdown
         end
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
