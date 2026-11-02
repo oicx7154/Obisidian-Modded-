@@ -562,8 +562,8 @@ function ThemeManager:GetContrastReport(): { Ratio: number, PairName: string, Pa
 
     local FontColor = FontColorOption.Value
     local Surfaces = {
-        { Name = "font color vs. background color", Color = BackgroundColorOption.Value },
-        { Name = "font color vs. main color", Color = MainColorOption.Value },
+        { Name = "字体颜色 vs. 背景颜色", Color = BackgroundColorOption.Value },
+        { Name = "字体颜色 vs. 主色", Color = MainColorOption.Value },
     }
 
     local WorstRatio, WorstName = math.huge, ""
