@@ -14948,7 +14948,7 @@ function Library:CreateWindow(WindowInfo)
             local TitleLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
                 Position = UDim2.fromOffset(12, 5),
-                Size = UDim2.new(1, -44, 0, 18),
+                Size = UDim2.new(1, -70, 0, 18),
                 Text = Dropdown.Title,
                 TextSize = 15,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -15319,6 +15319,11 @@ function Library:CreateWindow(WindowInfo)
             function Dropdown:SetOpen(open)
                 setOpen(open)
             end
+            
+            local ExpandOverlay
+            local ExpandList
+            local ExpandTitle
+            local IsExpanded = false
 
             function Dropdown:SetVisible(visible)
                 if self.Destroyed then return end
@@ -15327,6 +15332,10 @@ function Library:CreateWindow(WindowInfo)
 
                 if not self.Visible then
                     setOpen(false)
+                    IsExpanded = false
+                    if ExpandOverlay then
+                        ExpandOverlay.Visible = false
+                    end
                 end
 
                 BoxHolder.Visible = self.Visible
@@ -15344,6 +15353,11 @@ function Library:CreateWindow(WindowInfo)
 
                 if FloatingMenu then
                     FloatingMenu:Destroy()
+                end
+
+                if ExpandOverlay then
+                    ExpandOverlay:Destroy()
+                    ExpandOverlay = nil
                 end
 
                 BoxHolder:Destroy()
@@ -15379,6 +15393,199 @@ function Library:CreateWindow(WindowInfo)
             elseif Info.DefaultOpen == true then
                 setOpen(true)
             end
+            -- Expand 按钮：放在标题栏右侧
+            local ExpandButton = New("TextButton", {
+                AnchorPoint = Vector2.new(1, 0),
+                BackgroundTransparency = 1,
+                Position = UDim2.new(1, -10, 0, 4),
+                Size = UDim2.fromOffset(22, 20),
+                Text = "⛶",
+                TextSize = 18,
+                ZIndex = Header.ZIndex + 1,
+                Parent = Header,
+            })
+
+            local function createExpandPanel()
+                if ExpandOverlay then
+                    return true
+                end
+
+                if not Library.MainFrame then
+                    warn("无法打开 Expand")
+                    return false
+                end
+
+                ExpandOverlay = New("TextButton", {
+                    AutoButtonColor = false,
+                    BackgroundColor3 = "DarkColor",
+                    BackgroundTransparency = 0.5,
+                    Size = UDim2.fromScale(1, 1),
+                    Text = "",
+                    Visible = false,
+                    ZIndex = 8000,
+                    Parent = Library.MainFrame,
+                })
+
+                local Panel = New("Frame", {
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    BackgroundColor3 = "BackgroundColor",
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    Size = UDim2.fromScale(0.7, 0.72),
+                    ZIndex = 8001,
+                    Parent = ExpandOverlay,
+                })
+
+                New("UICorner", {
+                    CornerRadius = UDim.new(0, Library.CornerRadius),
+                    Parent = Panel,
+                })
+
+                Library:AddOutline(Panel)
+
+                ExpandTitle = New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.fromOffset(12, 0),
+                    Size = UDim2.new(1, -50, 0, 34),
+                    Text = Dropdown.Title,
+                    TextSize = 15,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    ZIndex = 8002,
+                    Parent = Panel,
+                })
+
+                local CloseButton = New("TextButton", {
+                    AnchorPoint = Vector2.new(1, 0),
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(1, -8, 0, 4),
+                    Size = UDim2.fromOffset(26, 26),
+                    Text = "×",
+                    TextSize = 20,
+                    ZIndex = 8002,
+                    Parent = Panel,
+                })
+
+                ExpandList = New("ScrollingFrame", {
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+                    CanvasSize = UDim2.fromOffset(0, 0),
+                    Position = UDim2.fromOffset(0, 34),
+                    Size = UDim2.new(1, 0, 1, -34),
+                    ScrollBarThickness = 3,
+                    ScrollBarImageColor3 = "OutlineColor",
+                    ZIndex = 8002,
+                    Parent = Panel,
+                })
+
+                New("UIListLayout", {
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Padding = UDim.new(0, 6),
+                    Parent = ExpandList,
+                })
+
+                New("UIPadding", {
+                    PaddingTop = UDim.new(0, 8),
+                    PaddingBottom = UDim.new(0, 8),
+                    PaddingLeft = UDim.new(0, 10),
+                    PaddingRight = UDim.new(0, 10),
+                    Parent = ExpandList,
+                })
+
+                -- 点击遮罩或关闭按钮收起面板
+                ExpandOverlay.MouseButton1Click:Connect(function()
+                    Dropdown:Collapse()
+                end)
+
+                CloseButton.MouseButton1Click:Connect(function()
+                    Dropdown:Collapse()
+                end)
+
+                return true
+            end
+
+            local function rebuildExpandList()
+                -- 只删除旧选项，保留布局和内边距
+                for _, child in ipairs(ExpandList:GetChildren()) do
+                    if child:IsA("TextButton") then
+                        child:Destroy()
+                    end
+                end
+
+                for index, value in ipairs(Dropdown.Values) do
+                    local button = New("TextButton", {
+                        BackgroundColor3 = "MainColor",
+                        BackgroundTransparency = Dropdown.Value == value and 0 or 0.5,
+                        AutoButtonColor = true,
+                        Size = UDim2.new(1, 0, 0, 30),
+                        LayoutOrder = index,
+                        Text = tostring(value),
+                        TextSize = 14,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        ZIndex = 8003,
+                        Parent = ExpandList,
+                    })
+
+                    New("UICorner", {
+                        CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+                        Parent = button,
+                    })
+
+                    New("UIPadding", {
+                        PaddingLeft = UDim.new(0, 10),
+                        PaddingRight = UDim.new(0, 10),
+                        Parent = button,
+                    })
+
+                    button.MouseButton1Click:Connect(function()
+                        -- SetValue 会更新选中项并触发原有 Callback
+                        Dropdown:SetValue(value)
+                        Dropdown:Collapse()
+                    end)
+                end
+            end
+
+            function Dropdown:Expand()
+                if self.Destroyed or IsExpanded then
+                    return
+                end
+
+                if not createExpandPanel() then
+                    return
+                end
+
+                -- 普通下拉菜单先收起；ListOnly 则保持展开
+                if not self.ListOnly then
+                    self:SetOpen(false)
+                end
+
+                ExpandTitle.Text = self.Title
+                rebuildExpandList()
+
+                IsExpanded = true
+                ExpandOverlay.Visible = true
+            end
+
+            function Dropdown:Collapse()
+                IsExpanded = false
+
+                if ExpandOverlay then
+                    ExpandOverlay.Visible = false
+                end
+            end
+
+            function Dropdown:IsExpanded()
+                return IsExpanded
+            end
+
+            table.insert(
+                Dropdown.Connections,
+                ExpandButton.MouseButton1Click:Connect(function()
+                    if Dropdown:IsExpanded() then
+                        Dropdown:Collapse()
+                    else
+                        Dropdown:Expand()
+                    end
+                end)
+            )
             return Dropdown
         end
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
