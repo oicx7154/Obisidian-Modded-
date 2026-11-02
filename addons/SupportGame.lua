@@ -1,5 +1,5 @@
 return function(Tab)
-    local JSON_URL =  "https://raw.githubusercontent.com/oicx7154/Obisidian-Modded-/main/Su.json"
+    local JSON_URL =  "https://raw.githubusercontent.com/oicx7154/Obisidian-Modded-/main/addons/Su.json"
 
     local HttpService = game:GetService("HttpService")
     
