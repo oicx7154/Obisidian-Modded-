@@ -14974,6 +14974,29 @@ function Library:CreateWindow(WindowInfo)
                 TextSize = 20,
                 Parent = Header,
             })
+            local SelectBox = New("Frame", {
+                BackgroundColor3 = "MainColor",
+                Position = UDim2.fromOffset(8, 23),
+                Size = UDim2.new(1, -16, 0, 21),
+                ZIndex = 1,
+                Parent = Header,
+            })
+
+            New("UICorner", {
+                CornerRadius = UDim.new(0, 4),
+                Parent = SelectBox,
+            })
+
+            New("UIStroke", {
+                Color = "OutlineColor",
+                Parent = SelectBox,
+            })
+
+            -- 当前选项文字放在框内
+            ValueLabel.Position = UDim2.fromOffset(14, 25)
+            ValueLabel.Size = UDim2.new(1, -48, 0, 16)
+            ValueLabel.ZIndex = 2
+
             -- Dropdown 和段落联合：显示公告内容
             local ContentLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
