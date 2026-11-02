@@ -160,19 +160,7 @@ return function(Groupbox)
     if hasEntries then
         showEntry(entryByChoice[choices[defaultIndex]])
     end
-    Tab.InfoTab:UserPanelBox({
-        Title = "提示",
-        IsNormal = true,
-        Username = false,
-        UserIcon = false,
-        Information = formatContent(
-            "\n⏺️脚本名字\n" ..
-            "🟢新增功能/脚本\n" ..
-            "🔴删除功能/脚本\n" ..
-            "🟡修复\n" ..
-            "🟣优化"
-        ),
-    })
+
     Groupbox.tz:AddLabel("⏺️脚本名字\n" .."🟢新增功能/脚本\n" .."🔴删除功能/脚本\n" .."🟡修复\n" .."🟣优化",true)
     local image = Groupbox.mz:AddImage("", {
         Image = imageId,
