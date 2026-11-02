@@ -72,19 +72,17 @@ return function(Groupbox)
         loadError = loadError or "updates 中没有有效的更新记录"
     end
 
-    local announcementLabel = Groupbox.gx:AddLabel(
-        hasEntries and "正在加载更新公告……"
-            or ("更新公告加载失败：\n" .. tostring(loadError)),
-        true
-    )
+    local announcementLabel = Groupbox.gx:AddLabel(hasEntries and "正在加载更新公告……" or ("更新公告加载失败：\n" .. tostring(loadError)), true)
 
     local function escapeRichText(text)
-        return tostring(text)
+        local result = tostring(text)
             :gsub("&", "&amp;")
             :gsub("<", "&lt;")
             :gsub(">", "&gt;")
             :gsub('"', "&quot;")
             :gsub("'", "&apos;")
+    
+        return result
     end
     
     local colors = {
