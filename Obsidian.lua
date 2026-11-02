@@ -5172,6 +5172,151 @@ do
 
         return Label
     end
+    function Funcs:AddParagraph(Info)
+        if self.Destroyed then
+            return nil
+        end
+
+        Info = Info or {}
+
+        local Groupbox = self
+
+        local Paragraph = {
+            Title = tostring(Info.Title or ""),
+            Content = tostring(Info.Content or ""),
+            Visible = Info.Visible ~= false,
+            Destroyed = false,
+            Type = "Paragraph",
+            Connections = {},
+        }
+
+        local Holder = New("Frame", {
+            BackgroundColor3 = "MainColor",
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Size = UDim2.new(1, 0, 0, 0),
+            Visible = Paragraph.Visible,
+            Parent = Groupbox.Container,
+        })
+
+        New("UICorner", {
+            CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+            Parent = Holder,
+        })
+
+        New("UIStroke", {
+            Color = "OutlineColor",
+            Parent = Holder,
+        })
+
+        New("UIPadding", {
+            PaddingTop = UDim.new(0, 8),
+            PaddingBottom = UDim.new(0, 8),
+            PaddingLeft = UDim.new(0, 10),
+            PaddingRight = UDim.new(0, 10),
+            Parent = Holder,
+        })
+
+        New("UIListLayout", {
+            FillDirection = Enum.FillDirection.Vertical,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 4),
+            Parent = Holder,
+        })
+
+        -- 标题
+        local TitleLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Size = UDim2.new(1, 0, 0, 0),
+            LayoutOrder = 1,
+            Text = Paragraph.Title,
+            TextSize = Info.TitleSize or 15,
+            Font = Enum.Font.GothamBold,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            Visible = Paragraph.Title ~= "",
+            Parent = Holder,
+        })
+
+        local ContentLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Size = UDim2.new(1, 0, 0, 0),
+            LayoutOrder = 2,
+            Text = Paragraph.Content,
+            TextSize = Info.ContentSize or 14,
+            TextWrapped = true,
+            RichText = Info.RichText == true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+            Visible = Paragraph.Content ~= "",
+            Parent = Holder,
+        })
+
+        Paragraph.Holder = Holder
+        Paragraph.TitleLabel = TitleLabel
+        Paragraph.ContentLabel = ContentLabel
+
+        function Paragraph:SetTitle(Title)
+            if self.Destroyed then return end
+
+            self.Title = tostring(Title or "")
+            TitleLabel.Text = self.Title
+            TitleLabel.Visible = self.Title ~= ""
+            Groupbox:Resize()
+        end
+
+        function Paragraph:SetContent(Content)
+            if self.Destroyed then return end
+
+            self.Content = tostring(Content or "")
+            ContentLabel.Text = self.Content
+            ContentLabel.Visible = self.Content ~= ""
+            Groupbox:Resize()
+        end
+
+        function Paragraph:SetVisible(Visible)
+            if self.Destroyed then return end
+
+            self.Visible = Visible == true
+            Holder.Visible = self.Visible
+            Groupbox:Resize()
+        end
+
+        function Paragraph:Destroy()
+            if self.Destroyed then return end
+
+            self.Destroyed = true
+
+            for _, connection in ipairs(self.Connections) do
+                connection:Disconnect()
+            end
+
+            Holder:Destroy()
+
+            local index = table.find(Groupbox.Elements, self)
+            if index then
+                table.remove(Groupbox.Elements, index)
+            end
+
+            Groupbox:Resize()
+        end
+
+        table.insert(
+            Paragraph.Connections,
+            Holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                if not Paragraph.Destroyed then
+                    Groupbox:Resize()
+                end
+            end)
+        )
+
+        table.insert(Groupbox.Elements, Paragraph)
+        Groupbox:Resize()
+
+        return Paragraph
+    end
 
     function Funcs:AddHoldButton(...)
         if self.Destroyed then return nil end
@@ -13147,7 +13292,6 @@ function Library:CreateWindow(WindowInfo)
                 Visible = true,
                 Parent = TabCanvas,
             })
-
             TabLeft = New("ScrollingFrame", {
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 BackgroundTransparency = 1,
@@ -13180,7 +13324,6 @@ function Library:CreateWindow(WindowInfo)
                     Parent = TabLeft,
                 })
             end
-
             TabRight = New("ScrollingFrame", {
                 AnchorPoint = Vector2.new(1, 0),
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -13573,6 +13716,7 @@ function Library:CreateWindow(WindowInfo)
                 TabLeft,
                 TabRight,
             },
+            FullParagraphContainer = nil,
 
             UserPanelState = {
                 Defined = false,
@@ -13602,7 +13746,18 @@ function Library:CreateWindow(WindowInfo)
         -- Backwards-compatible state alias for scripts that only inspect the
         -- old warning table.  The public API is UserPanelBox.
         Tab.WarningBox = Tab.UserPanelState
+        Tab.FullParagraphContainer = New("Frame", {
+            BackgroundTransparency = 1,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Size = UDim2.new(1, -5, 0, 0),
+            Parent = TabContainer,
+        })
 
+        New("UIListLayout", {
+            Padding = UDim.new(0, 6),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = Tab.FullParagraphContainer,
+        })
         function Tab:RefreshUserPanelTheme()
             local State = Tab.UserPanelState
             local IsNormal = State.IsNormal == true
@@ -13706,14 +13861,41 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Tab:RefreshSides()
-            local Offset = WarningBoxHolder.Visible and WarningBox.Size.Y.Offset + 8 or 0
+            local WarningOffset = WarningBoxHolder.Visible
+                and WarningBox.Size.Y.Offset + 8
+                or 0
+
+            local FullHeight = 0
+            local Container = Tab.FullParagraphContainer
+
+            if Container then
+                Container.Position = UDim2.fromOffset(0, WarningOffset)
+
+                local Scale = Library.DPIScale or 1
+                if Scale <= 0 then
+                    Scale = 1
+                end
+
+                FullHeight = Container.AbsoluteSize.Y / Scale
+            end
+
+            local Offset = WarningOffset + FullHeight
+
             for _, Side in Tab.Sides do
                 Side.Position = UDim2.new(Side.Position.X.Scale, 0, 0, Offset)
                 Side.Size = UDim2.new(0.5, -3, 1, -Offset)
             end
-
         end
+        table.insert(
+            Tab.Connections,
+            Tab.FullParagraphContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                if not Tab.Destroyed then
+                    Tab:RefreshSides()
+                end
+            end)
+        )
 
+        Tab:RefreshSides()
         function Tab:Resize(ResizeUserPanelBox: boolean?)
             if ResizeUserPanelBox then
                 local CurrentState = Tab.UserPanelState
@@ -14537,7 +14719,150 @@ function Library:CreateWindow(WindowInfo)
 
             return Groupbox
         end
+        function Tab:AddParagraph(Info)
+            Info = Info or {}
 
+            local Owner = self
+
+            local IsFull = Info.Side == "Full"
+            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+
+            if IsFull and not Owner.FullParagraphContainer then
+            end
+
+            local ParentContainer = IsFull
+                and Owner.FullParagraphContainer
+                or Owner.Sides[Side]
+
+            local Paragraph = {
+                Title = tostring(Info.Title or ""),
+                Content = tostring(Info.Content or ""),
+                Visible = Info.Visible ~= false,
+                Destroyed = false,
+                Type = "Paragraph",
+            }
+
+            -- 外层间距与 Groupbox 保持一致
+            local BoxHolder = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                Visible = Paragraph.Visible,
+                LayoutOrder = Info.LayoutOrder or 0,
+                Parent = ParentContainer,
+            })
+
+            New("UIListLayout", {
+                Padding = UDim.new(0, 6),
+                Parent = BoxHolder,
+            })
+
+            New("UIPadding", {
+                PaddingTop = UDim.new(0, 4),
+                PaddingBottom = UDim.new(0, 4),
+                Parent = BoxHolder,
+            })
+
+            -- 可见卡片
+            local Holder = New("Frame", {
+                BackgroundColor3 = "BackgroundColor",
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                Parent = BoxHolder,
+            })
+
+            table.insert(
+                Library.Corners,
+                New("UICorner", {
+                    CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                    Parent = Holder,
+                })
+            )
+
+            Library:AddOutline(Holder)
+
+            New("UIPadding", {
+                PaddingTop = UDim.new(0, 10),
+                PaddingBottom = UDim.new(0, 10),
+                PaddingLeft = UDim.new(0, 12),
+                PaddingRight = UDim.new(0, 12),
+                Parent = Holder,
+            })
+
+            New("UIListLayout", {
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 5),
+                Parent = Holder,
+            })
+
+            local TitleLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 1,
+                Text = Paragraph.Title,
+                TextSize = Info.TitleSize or 15,
+                Font = Enum.Font.GothamBold,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                Visible = Paragraph.Title ~= "",
+                Parent = Holder,
+            })
+
+            local ContentLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 2,
+                Text = Paragraph.Content,
+                TextSize = Info.ContentSize or 14,
+                RichText = Info.RichText == true,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                Visible = Paragraph.Content ~= "",
+                Parent = Holder,
+            })
+
+            Paragraph.BoxHolder = BoxHolder
+            Paragraph.Holder = Holder
+            Paragraph.TitleLabel = TitleLabel
+            Paragraph.ContentLabel = ContentLabel
+
+            function Paragraph:SetTitle(Title)
+                if self.Destroyed then return end
+
+                self.Title = tostring(Title or "")
+                TitleLabel.Text = self.Title
+                TitleLabel.Visible = self.Title ~= ""
+            end
+
+            function Paragraph:SetContent(Content)
+                if self.Destroyed then return end
+
+                self.Content = tostring(Content or "")
+                ContentLabel.Text = self.Content
+                ContentLabel.Visible = self.Content ~= ""
+            end
+
+            function Paragraph:SetVisible(Visible)
+                if self.Destroyed then return end
+
+                self.Visible = Visible == true
+                BoxHolder.Visible = self.Visible
+            end
+
+            function Paragraph:Destroy()
+                if self.Destroyed then return end
+
+                self.Destroyed = true
+                BoxHolder:Destroy()
+            end
+
+            return Paragraph
+        end
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
             return self:AddGroupbox({ Side = 1, Name = Name, IconName = IconName, Visible = Visible, Collapsed = Collapsed, DisableCollapsing = DisableCollapsing })
         end
