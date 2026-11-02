@@ -80,7 +80,9 @@ return function(Tab)
         Side = "Right",
         Mode = "Inline",
         MaxVisibleItems = 4,
+        ExpandColumns = 2,
         ListOnly = true,
+        Expandable = true,
         Values = authors,
         Default = 1,
 
