@@ -2,7 +2,7 @@ return function(Tab)
     local JSON_URL =  "https://raw.githubusercontent.com/oicx7154/Obisidian-Modded-/main/addons/Su.json"
 
     local HttpService = game:GetService("HttpService")
-    
+
     if type(cloneref) == "function" then
         HttpService = cloneref(HttpService)
     end
@@ -11,6 +11,7 @@ return function(Tab)
     local gamesByAuthor = {}
     local loadError
 
+    -- 读取 JSON
     local ok, result = pcall(function()
         local raw = game:HttpGet(JSON_URL)
         return HttpService:JSONDecode(raw)
@@ -26,20 +27,24 @@ return function(Tab)
                 and type(author.name) == "string"
                 and author.name ~= ""
                 and type(author.games) == "table"
-                and gamesByAuthor[author.name] == nil
             then
-                local gameNames = {}
+                if gamesByAuthor[author.name] == nil then
+                    local gameNames = {}
 
-                for _, name in ipairs(author.games) do
-                    if type(name) == "string" and name ~= "" then
-                        table.insert(gameNames, "• " .. name)
+                    for _, name in ipairs(author.games) do
+                        if type(name) == "string" and name ~= "" then
+                            table.insert(gameNames, "• " .. name)
+                        end
                     end
-                end
 
-                table.insert(authors, author.name)
-                gamesByAuthor[author.name] = #gameNames > 0
-                    and ("支持的游戏：\n" .. table.concat(gameNames, "\n"))
-                    or "该作者暂无支持的游戏。"
+                    table.insert(authors, author.name)
+
+                    gamesByAuthor[author.name] = #gameNames > 0
+                        and table.concat(gameNames, "\n")
+                        or "该作者暂无支持的游戏。"
+                else
+                    warn("重复的作者名称，已跳过：", author.name)
+                end
             end
         end
     end
@@ -51,30 +56,42 @@ return function(Tab)
         loadError = loadError or "JSON 中没有有效的作者数据"
     end
 
-    local dropdown
-    Tab.support:AddParagraph({Title = "提示",Content = "⏺️脚本名字\n" .."🟢新增功能/脚本\n" .."🔴删除功能/脚本\n" .."🟡修复\n" .."🟣优化",Side = "Right",RichText = false})
-
-    dropdown = Tab.support:AddParagraphDropdown({
-        Title = "作者支持的游戏",
+    local paragraph = Tab.support:AddParagraph({
+        Title = hasAuthors and (authors[1] .. " 支持的游戏") or "支持的游戏",
+        Content = hasAuthors
+            and gamesByAuthor[authors[1]]
+            or tostring(loadError),
         Side = "Left",
+        RichText = false,
+    })
+
+    local tips = Tab.support:AddParagraph({
+        Title = "提示",
+        Content = "⏺️脚本名字\n"
+            .. "🟢新增功能/脚本\n"
+            .. "🔴删除功能/脚本\n"
+            .. "🟡修复\n"
+            .. "🟣优化",
+        Side = "Right",
+        RichText = false,
+    })
+    local dropdown = Tab.support:AddParagraphDropdown({
+        Title = "选择作者",
+        Side = "Right",
         Mode = "Inline",
         MaxVisibleItems = 4,
 
         Values = authors,
         Default = 1,
 
-        Content = hasAuthors
-            and gamesByAuthor[authors[1]]
-            or tostring(loadError),
-
         Callback = function(selected)
-            if dropdown then
-                dropdown:SetContent(
-                    gamesByAuthor[selected] or "该作者暂无支持的游戏。"
-                )
+            if gamesByAuthor[selected] then
+                paragraph:SetTitle(tostring(selected) .. " 支持的游戏")
+                paragraph:SetContent(gamesByAuthor[selected])
             end
         end,
     })
 
-    return dropdown
+
+    return dropdown, paragraph, tips
 end
