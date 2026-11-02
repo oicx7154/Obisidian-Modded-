@@ -1,4 +1,4 @@
-return function(Groupbox,Tab)
+return function(Groupbox)
     local JSON_URL = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/Update%20Announcement.json"
 
     local DefaultImage = "rbxassetid://71686922157317"
@@ -173,6 +173,7 @@ return function(Groupbox,Tab)
             "🟣优化"
         ),
     })
+    Groupbox.tz:AddLabel("⏺️脚本名字\n" .."🟢新增功能/脚本\n" .."🔴删除功能/脚本\n" .."🟡修复\n" .."🟣优化",true)
     local image = Groupbox.mz:AddImage("", {
         Image = imageId,
         Height = 200,
