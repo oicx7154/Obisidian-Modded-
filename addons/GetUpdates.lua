@@ -1,4 +1,4 @@
-return function(Groupbox)
+return function(Groupbox,Tab)
     local JSON_URL = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/Update%20Announcement.json"
 
     local DefaultImage = "rbxassetid://71686922157317"
@@ -32,7 +32,16 @@ return function(Groupbox)
             data = decoded
         end
     end
-
+    local imageName = "初夏的美照"
+    
+    if data and type(data.Name) == "string" and data.Name ~= "" then
+        imageName = data.Name
+    end
+    
+    Groupbox.mz = Tab.InfoTab:AddRightGroupbox(imageName,"image",true,false,false)
+    Groupbox.tz = Tab.InfoTab:AddLeftGroupbox("提示")
+    Groupbox.gx = Tab.InfoTab:AddLeftGroupbox("更新公告")
+    Groupbox.gxxz = Tab.InfoTab:AddRightGroupbox("更新日志")
     local choices = {}
     local entryByChoice = {}
     local defaultIndex = 1
@@ -40,10 +49,6 @@ return function(Groupbox)
     if data then
         if type(data.image) == "string" and data.image ~= "" then
             imageId = data.image
-        end
-        
-        if type(data.Name) == "string" and data.Name ~= "" then
-            Groupbox.mz:SetDescription(data.Name)
         end
         
         local latestVersion = tostring(data.latest or "")
