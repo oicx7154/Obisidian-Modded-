@@ -160,7 +160,7 @@ return function(Groupbox)
     if hasEntries then
         showEntry(entryByChoice[choices[defaultIndex]])
     end
-
+    Groupbox.tz:AddLabel("🟢新增\n🔴删除\n🟡修复\n🟣优化",true)
     local image = Groupbox.mz:AddImage("", {
         Image = imageId,
         Height = 200,
