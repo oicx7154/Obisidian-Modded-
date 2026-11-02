@@ -78,7 +78,7 @@ return function(Tab)
     local dropdown = Tab.support:AddParagraphDropdown({
         Title = "选择作者",
         Side = "Right",
-        Mode = "Floating",
+        Mode = "Inline",
         MaxVisibleItems = 4,
 
         Values = authors,
