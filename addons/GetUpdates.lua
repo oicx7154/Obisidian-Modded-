@@ -41,7 +41,7 @@ return function(Groupbox,Tab)
     Groupbox.mz = Tab.InfoTab:AddRightGroupbox(imageName,"image",true,false,false)
     Groupbox.gx = Tab.InfoTab:AddLeftGroupbox("更新公告")
     Groupbox.gxxz = Tab.InfoTab:AddRightGroupbox("更新日志")
-    Tab.InfoTab:AddParagraph({Title = "提示",Content = "⏺️脚本名字\n" .."🟢新增功能/脚本\n" .."🔴删除功能/脚本\n" .."🟡修复\n" .."🟣优化",Side = "Left",RichText = false})
+    Tab.InfoTab:AddParagraph({Title = "提示",Content = "⏺️脚本名字\n" .."🟢新增功能/脚本\n" .."🔴删除功能/脚本\n" .."🟡修复\n" .."🟣优化",Side = "Right",RichText = false})
     local choices = {}
     local entryByChoice = {}
     local defaultIndex = 1
