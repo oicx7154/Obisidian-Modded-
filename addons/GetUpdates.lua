@@ -165,8 +165,8 @@ return function(Groupbox,Tab)
         IsNormal = true,
         Username = false,
         UserIcon = false,
-        Text = formatContent(
-            "⏺️脚本名字\n" ..
+        Information = formatContent(
+            "\n⏺️脚本名字\n" ..
             "🟢新增功能/脚本\n" ..
             "🔴删除功能/脚本\n" ..
             "🟡修复\n" ..
