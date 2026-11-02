@@ -5317,7 +5317,7 @@ do
 
         return Paragraph
     end
-    
+
     function Funcs:AddHoldButton(...)
         if self.Destroyed then return nil end
 
@@ -14682,7 +14682,126 @@ function Library:CreateWindow(WindowInfo)
 
             return Groupbox
         end
+        function Tab:AddParagraph(Info)
+            Info = Info or {}
 
+            local Owner = self
+            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+
+            local Paragraph = {
+                Title = tostring(Info.Title or ""),
+                Content = tostring(Info.Content or ""),
+                Visible = Info.Visible ~= false,
+                Destroyed = false,
+                Connections = {},
+                Type = "Paragraph",
+            }
+
+            -- 外层容器：直接放进 Tab 的左列或右列
+            local Holder = New("Frame", {
+                BackgroundColor3 = "BackgroundColor",
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                Visible = Paragraph.Visible,
+                Parent = Owner.Sides[Side],
+            })
+
+            table.insert(
+                Library.Corners,
+                New("UICorner", {
+                    CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                    Parent = Holder,
+                })
+            )
+
+            Library:AddOutline(Holder)
+
+            New("UIPadding", {
+                PaddingTop = UDim.new(0, 10),
+                PaddingBottom = UDim.new(0, 10),
+                PaddingLeft = UDim.new(0, 12),
+                PaddingRight = UDim.new(0, 12),
+                Parent = Holder,
+            })
+
+            New("UIListLayout", {
+                FillDirection = Enum.FillDirection.Vertical,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 5),
+                Parent = Holder,
+            })
+
+            local TitleLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 1,
+                Text = Paragraph.Title,
+                TextSize = Info.TitleSize or 15,
+                Font = Enum.Font.GothamBold,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                Visible = Paragraph.Title ~= "",
+                Parent = Holder,
+            })
+
+            local ContentLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 2,
+                Text = Paragraph.Content,
+                TextSize = Info.ContentSize or 14,
+                RichText = Info.RichText == true,
+                TextWrapped = true,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                Visible = Paragraph.Content ~= "",
+                Parent = Holder,
+            })
+
+            Paragraph.Holder = Holder
+            Paragraph.TitleLabel = TitleLabel
+            Paragraph.ContentLabel = ContentLabel
+
+            function Paragraph:SetTitle(Title)
+                if self.Destroyed then return end
+
+                self.Title = tostring(Title or "")
+                TitleLabel.Text = self.Title
+                TitleLabel.Visible = self.Title ~= ""
+            end
+
+            function Paragraph:SetContent(Content)
+                if self.Destroyed then return end
+
+                self.Content = tostring(Content or "")
+                ContentLabel.Text = self.Content
+                ContentLabel.Visible = self.Content ~= ""
+            end
+
+            function Paragraph:SetVisible(Visible)
+                if self.Destroyed then return end
+
+                self.Visible = Visible == true
+                Holder.Visible = self.Visible
+            end
+
+            function Paragraph:Destroy()
+                if self.Destroyed then return end
+
+                self.Destroyed = true
+
+                for _, Connection in ipairs(self.Connections) do
+                    Connection:Disconnect()
+                end
+
+                Holder:Destroy()
+            end
+
+            return Paragraph
+        end
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
             return self:AddGroupbox({ Side = 1, Name = Name, IconName = IconName, Visible = Visible, Collapsed = Collapsed, DisableCollapsing = DisableCollapsing })
         end
