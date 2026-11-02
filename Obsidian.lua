@@ -14863,6 +14863,473 @@ function Library:CreateWindow(WindowInfo)
 
             return Paragraph
         end
+        function Tab:AddParagraphDropdown(Info)
+            Info = Info or {}
+
+            local Owner = self
+            local IsFull = Info.Side == "Full"
+            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+
+            if IsFull and not Owner.FullParagraphContainer then
+            end
+
+            local ParentContainer = IsFull
+                and Owner.FullParagraphContainer
+                or Owner.Sides[Side]
+
+            local Dropdown = {
+                Title = tostring(Info.Title or "选择"),
+                Values = table.clone(Info.Values or {}),
+                Value = nil,
+                Mode = Info.Mode == "Floating" and "Floating" or "Inline",
+                Visible = Info.Visible ~= false,
+                Opened = false,
+                Destroyed = false,
+                Callback = Info.Callback,
+                Connections = {},
+                Type = "ParagraphDropdown",
+            }
+
+            local MaxVisible = math.max(1, tonumber(Info.MaxVisibleItems) or 8)
+            local RowHeight = 28
+
+            -- 外层间距与 Groupbox 一致
+            local BoxHolder = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                Visible = Dropdown.Visible,
+                LayoutOrder = Info.LayoutOrder or 0,
+                Parent = ParentContainer,
+            })
+
+            New("UIListLayout", {
+                Parent = BoxHolder,
+            })
+
+            New("UIPadding", {
+                PaddingTop = UDim.new(0, 4),
+                PaddingBottom = UDim.new(0, 4),
+                Parent = BoxHolder,
+            })
+
+            local Holder = New("Frame", {
+                BackgroundColor3 = "BackgroundColor",
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                ClipsDescendants = true,
+                Parent = BoxHolder,
+            })
+
+            local Corner = New("UICorner", {
+                CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                Parent = Holder,
+            })
+
+            table.insert(Library.Corners, Corner)
+            Library:AddOutline(Holder)
+
+            New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = Holder,
+            })
+
+            -- 标题和当前选择
+            local Header = New("TextButton", {
+                BackgroundTransparency = 1,
+                AutoButtonColor = false,
+                Size = UDim2.new(1, 0, 0, 48),
+                LayoutOrder = 1,
+                Text = "",
+                Parent = Holder,
+            })
+
+            local TitleLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(12, 5),
+                Size = UDim2.new(1, -44, 0, 18),
+                Text = Dropdown.Title,
+                TextSize = 15,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = Header,
+            })
+
+            local ValueLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(12, 25),
+                Size = UDim2.new(1, -44, 0, 16),
+                Text = "---",
+                TextSize = 13,
+                TextTransparency = 0.3,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = Header,
+            })
+
+            local Arrow = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -12, 0.5, 0),
+                Size = UDim2.fromOffset(20, 20),
+                Text = "⌄",
+                TextSize = 20,
+                Parent = Header,
+            })
+            -- Dropdown 和段落联合：显示公告内容
+            local ContentLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 3,
+
+                Text = tostring(Info.Content or ""),
+                TextSize = Info.ContentSize or 14,
+                TextWrapped = true,
+                RichText = Info.RichText == true,
+
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+
+                Visible = Info.Content ~= nil and tostring(Info.Content) ~= "",
+                Parent = Holder,
+            })
+
+            New("UIPadding", {
+                PaddingLeft = UDim.new(0, 12),
+                PaddingRight = UDim.new(0, 12),
+                PaddingBottom = UDim.new(0, 8),
+                Parent = ContentLabel,
+            })
+
+            Dropdown.ContentLabel = ContentLabel
+            -- 内嵌模式的选项容器
+            local InlineList = New("ScrollingFrame", {
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 2,
+                Visible = false,
+
+                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                CanvasSize = UDim2.fromOffset(0, 0),
+                ScrollingDirection = Enum.ScrollingDirection.Y,
+                ScrollBarThickness = 3,
+                ScrollBarImageColor3 = "OutlineColor",
+
+                Parent = Holder,
+            })
+
+            New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = InlineList,
+            })
+
+            New("UIPadding", {
+                PaddingLeft = UDim.new(0, 6),
+                PaddingRight = UDim.new(0, 6),
+                PaddingBottom = UDim.new(0, 6),
+                Parent = InlineList,
+            })
+            -- 悬浮模式复用库已有的 ContextMenu
+            local FloatingMenu
+
+            if Dropdown.Mode == "Floating" then
+                FloatingMenu = Library:AddContextMenu(
+                    Header,
+                    function()
+                        return UDim2.fromOffset(
+                            Header.AbsoluteSize.X / (Library.DPIScale or 1),
+                            math.min(#Dropdown.Values, MaxVisible) * RowHeight
+                        )
+                    end,
+                    function()
+                        return { 0, Header.AbsoluteSize.Y + 1 }
+                    end,
+                    2,
+                    function(Active)
+                        Dropdown.Opened = Active
+                        Arrow.Text = Active and "⌃" or "⌄"
+                    end,
+                    false,
+                    "bottom",
+                    "Dropdown"
+                )
+            end
+
+            local Buttons = {}
+
+            local function updateDisplay()
+                ValueLabel.Text = Dropdown.Value ~= nil
+                    and tostring(Dropdown.Value)
+                    or "---"
+
+                for value, button in pairs(Buttons) do
+                    button.BackgroundTransparency =
+                        Dropdown.Value == value and 0 or 1
+                end
+            end
+
+            local function runCallback()
+                if type(Dropdown.Callback) == "function" then
+                    Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
+                end
+            end
+
+            local InlineTween
+            local InlineTweenConnection
+
+            local function stopInlineTween()
+                if InlineTweenConnection then
+                    InlineTweenConnection:Disconnect()
+                    InlineTweenConnection = nil
+                end
+
+                if InlineTween then
+                    InlineTween:Cancel()
+                    InlineTween = nil
+                end
+            end
+
+            local function getInlineHeight()
+                local visibleRows = math.min(#Dropdown.Values, MaxVisible)
+                return visibleRows * RowHeight + (visibleRows > 0 and 6 or 0)
+            end
+            local function syncContent()
+                if type(Info.Contents) ~= "table" then
+                    return
+                end
+
+                local content = tostring(Info.Contents[Dropdown.Value] or "")
+                ContentLabel.Text = content
+                ContentLabel.Visible = content ~= ""
+            end
+            local function setOpen(open)
+                if Dropdown.Destroyed then return end
+
+                open = open == true
+
+                if Dropdown.Mode == "Inline" then
+                    Dropdown.Opened = open
+                    Arrow.Text = open and "⌃" or "⌄"
+
+                    stopInlineTween()
+
+                    if open then
+                        InlineList.Visible = true
+                    end
+
+                    local targetHeight = open and getInlineHeight() or 0
+
+                    local tween = TweenService:Create(
+                        InlineList,
+                        TweenInfo.new(
+                            0.22, -- 动画时长，可以自行调整
+                            Enum.EasingStyle.Quad,
+                            Enum.EasingDirection.Out
+                        ),
+                        {
+                            Size = UDim2.new(1, 0, 0, targetHeight),
+                        }
+                    )
+
+                    InlineTween = tween
+
+                    InlineTweenConnection = tween.Completed:Connect(function(state)
+                        if InlineTween ~= tween then
+                            return
+                        end
+
+                        if InlineTweenConnection then
+                            InlineTweenConnection:Disconnect()
+                            InlineTweenConnection = nil
+                        end
+
+                        InlineTween = nil
+
+                        if state == Enum.PlaybackState.Completed and not Dropdown.Opened then
+                            InlineList.Visible = false
+                        end
+                    end)
+
+                    tween:Play()
+                elseif FloatingMenu then
+                    if open then
+                        FloatingMenu:Open()
+                    else
+                        FloatingMenu:Close()
+                    end
+                end
+            end
+            -- 重建选项时停止旧动画，并根据当前状态更新高度
+            stopInlineTween()
+
+            InlineList.Size = UDim2.new(
+                1, 0,
+                0, Dropdown.Opened and getInlineHeight() or 0
+            )
+
+            InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
+
+            local function buildValues()
+                for _, button in pairs(Buttons) do
+                    button:Destroy()
+                end
+                table.clear(Buttons)
+
+                local list = Dropdown.Mode == "Inline"
+                    and InlineList
+                    or FloatingMenu.Menu
+
+                for index, value in ipairs(Dropdown.Values) do
+                    local button = New("TextButton", {
+                        BackgroundColor3 = "MainColor",
+                        BackgroundTransparency = 1,
+                        AutoButtonColor = false,
+                        Size = UDim2.new(1, 0, 0, RowHeight),
+                        LayoutOrder = index,
+                        Text = tostring(value),
+                        TextSize = 14,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Parent = list,
+                    })
+
+                    New("UICorner", {
+                        CornerRadius = UDim.new(0, 5),
+                        Parent = button,
+                    })
+                    
+                    New("UIPadding", {
+                        PaddingLeft = UDim.new(0, 12),
+                        PaddingRight = UDim.new(0, 12),
+                        Parent = button,
+                    })
+
+                    button.MouseButton1Click:Connect(function()
+                        if Dropdown.Destroyed then return end
+
+                        Dropdown.Value = value
+                        updateDisplay()
+                        syncContent()
+                        runCallback()
+
+                        if Info.CloseOnSelect ~= false then
+                            setOpen(false)
+                        end
+                    end)
+
+                    Buttons[value] = button
+                end
+
+                if FloatingMenu then
+                    FloatingMenu:SetSize(function()
+                        return UDim2.fromOffset(
+                            Header.AbsoluteSize.X / (Library.DPIScale or 1),
+                            math.min(#Dropdown.Values, MaxVisible) * RowHeight
+                        )
+                    end)
+                end
+
+                updateDisplay()
+            end
+
+            function Dropdown:SetValue(value)
+                if self.Destroyed then return end
+                if not table.find(self.Values, value) then return end
+
+                self.Value = value
+                updateDisplay()
+                syncContent()
+                runCallback()
+            end
+
+            function Dropdown:SetValues(values)
+                if self.Destroyed then return end
+                assert(type(values) == "table", "Values 必须是数组")
+
+                self.Values = table.clone(values)
+
+                if not table.find(self.Values, self.Value) then
+                    self.Value = self.Values[1]
+                end
+
+                buildValues()
+                syncContent()
+            end
+
+            function Dropdown:SetTitle(title)
+                if self.Destroyed then return end
+
+                self.Title = tostring(title or "")
+                TitleLabel.Text = self.Title
+            end
+            
+            function Dropdown:SetContent(content)
+                if self.Destroyed then return end
+
+                content = tostring(content or "")
+                ContentLabel.Text = content
+                ContentLabel.Visible = content ~= ""
+            end
+
+            function Dropdown:SetOpen(open)
+                setOpen(open)
+            end
+
+            function Dropdown:SetVisible(visible)
+                if self.Destroyed then return end
+
+                self.Visible = visible == true
+
+                if not self.Visible then
+                    setOpen(false)
+                end
+
+                BoxHolder.Visible = self.Visible
+            end
+
+            function Dropdown:Destroy()
+                if self.Destroyed then return end
+
+                stopInlineTween()
+                self.Destroyed = true
+                
+                for _, connection in ipairs(self.Connections) do
+                    connection:Disconnect()
+                end
+
+                if FloatingMenu then
+                    FloatingMenu:Destroy()
+                end
+
+                BoxHolder:Destroy()
+            end
+
+            Dropdown.BoxHolder = BoxHolder
+            Dropdown.Holder = Holder
+
+            table.insert(
+                Dropdown.Connections,
+                Header.MouseButton1Click:Connect(function()
+                    setOpen(not Dropdown.Opened)
+                end)
+            )
+
+            -- Default 可以是数组索引，也可以是选项值
+            if type(Info.Default) == "number" then
+                Dropdown.Value = Dropdown.Values[Info.Default]
+            elseif table.find(Dropdown.Values, Info.Default) then
+                Dropdown.Value = Info.Default
+            else
+                Dropdown.Value = Dropdown.Values[1]
+            end
+
+            buildValues()
+            syncContent()
+
+            if Info.DefaultOpen == true then
+                setOpen(true)
+            end
+
+            return Dropdown
+        end
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
             return self:AddGroupbox({ Side = 1, Name = Name, IconName = IconName, Visible = Visible, Collapsed = Collapsed, DisableCollapsing = DisableCollapsing })
         end
