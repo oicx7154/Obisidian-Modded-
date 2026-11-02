@@ -13292,18 +13292,6 @@ function Library:CreateWindow(WindowInfo)
                 Visible = true,
                 Parent = TabCanvas,
             })
-            local FullParagraphContainer = New("Frame", {
-                BackgroundTransparency = 1,
-                AutomaticSize = Enum.AutomaticSize.Y,
-                Size = UDim2.new(1, -5, 0, 0),
-                Parent = TabContainer,
-            })
-
-            New("UIListLayout", {
-                Padding = UDim.new(0, 6),
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Parent = FullParagraphContainer,
-            })
             TabLeft = New("ScrollingFrame", {
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 BackgroundTransparency = 1,
@@ -13728,7 +13716,7 @@ function Library:CreateWindow(WindowInfo)
                 TabLeft,
                 TabRight,
             },
-            FullParagraphContainer = FullParagraphContainer,
+            FullParagraphContainer = nil,
 
             UserPanelState = {
                 Defined = false,
@@ -13758,7 +13746,18 @@ function Library:CreateWindow(WindowInfo)
         -- Backwards-compatible state alias for scripts that only inspect the
         -- old warning table.  The public API is UserPanelBox.
         Tab.WarningBox = Tab.UserPanelState
+        Tab.FullParagraphContainer = New("Frame", {
+            BackgroundTransparency = 1,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Size = UDim2.new(1, -5, 0, 0),
+            Parent = TabContainer,
+        })
 
+        New("UIListLayout", {
+            Padding = UDim.new(0, 6),
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = Tab.FullParagraphContainer,
+        })
         function Tab:RefreshUserPanelTheme()
             local State = Tab.UserPanelState
             local IsNormal = State.IsNormal == true
@@ -13872,7 +13871,6 @@ function Library:CreateWindow(WindowInfo)
             if Container then
                 Container.Position = UDim2.fromOffset(0, WarningOffset)
 
-                -- AbsoluteSize 为屏幕像素；按库现有方式转成逻辑尺寸
                 local Scale = Library.DPIScale or 1
                 if Scale <= 0 then
                     Scale = 1
@@ -13890,12 +13888,13 @@ function Library:CreateWindow(WindowInfo)
         end
         table.insert(
             Tab.Connections,
-            FullParagraphContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            Tab.FullParagraphContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                 if not Tab.Destroyed then
                     Tab:RefreshSides()
                 end
             end)
         )
+
         Tab:RefreshSides()
         function Tab:Resize(ResizeUserPanelBox: boolean?)
             if ResizeUserPanelBox then
@@ -14863,6 +14862,341 @@ function Library:CreateWindow(WindowInfo)
             end
 
             return Paragraph
+        end
+        function Tab:AddParagraphDropdown(Info)
+            Info = Info or {}
+
+            local Owner = self
+            local IsFull = Info.Side == "Full"
+            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+
+            if IsFull and not Owner.FullParagraphContainer then
+                error("当前 Tab 没有 FullParagraphContainer", 2)
+            end
+
+            local ParentContainer = IsFull
+                and Owner.FullParagraphContainer
+                or Owner.Sides[Side]
+
+            local Dropdown = {
+                Title = tostring(Info.Title or "选择"),
+                Values = table.clone(Info.Values or {}),
+                Value = nil,
+                Mode = Info.Mode == "Floating" and "Floating" or "Inline",
+                Visible = Info.Visible ~= false,
+                Opened = false,
+                Destroyed = false,
+                Callback = Info.Callback,
+                Connections = {},
+                Type = "ParagraphDropdown",
+            }
+
+            local MaxVisible = math.max(1, tonumber(Info.MaxVisibleItems) or 8)
+            local RowHeight = 28
+
+            -- 外层间距与 Groupbox 一致
+            local BoxHolder = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                Visible = Dropdown.Visible,
+                LayoutOrder = Info.LayoutOrder or 0,
+                Parent = ParentContainer,
+            })
+
+            New("UIListLayout", {
+                Parent = BoxHolder,
+            })
+
+            New("UIPadding", {
+                PaddingTop = UDim.new(0, 4),
+                PaddingBottom = UDim.new(0, 4),
+                Parent = BoxHolder,
+            })
+
+            local Holder = New("Frame", {
+                BackgroundColor3 = "BackgroundColor",
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                Parent = BoxHolder,
+            })
+
+            local Corner = New("UICorner", {
+                CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                Parent = Holder,
+            })
+
+            table.insert(Library.Corners, Corner)
+            Library:AddOutline(Holder)
+
+            New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = Holder,
+            })
+
+            -- 标题和当前选择
+            local Header = New("TextButton", {
+                BackgroundTransparency = 1,
+                AutoButtonColor = false,
+                Size = UDim2.new(1, 0, 0, 48),
+                LayoutOrder = 1,
+                Text = "",
+                Parent = Holder,
+            })
+
+            local TitleLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(12, 5),
+                Size = UDim2.new(1, -44, 0, 18),
+                Text = Dropdown.Title,
+                TextSize = 15,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = Header,
+            })
+
+            local ValueLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(12, 25),
+                Size = UDim2.new(1, -44, 0, 16),
+                Text = "---",
+                TextSize = 13,
+                TextTransparency = 0.3,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = Header,
+            })
+
+            local Arrow = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -12, 0.5, 0),
+                Size = UDim2.fromOffset(20, 20),
+                Text = "⌄",
+                TextSize = 20,
+                Parent = Header,
+            })
+
+            -- 内嵌模式的选项容器
+            local InlineList = New("Frame", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 2,
+                Visible = false,
+                Parent = Holder,
+            })
+
+            New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = InlineList,
+            })
+
+            -- 悬浮模式复用库已有的 ContextMenu
+            local FloatingMenu
+
+            if Dropdown.Mode == "Floating" then
+                FloatingMenu = Library:AddContextMenu(
+                    Header,
+                    function()
+                        return UDim2.fromOffset(
+                            Header.AbsoluteSize.X / (Library.DPIScale or 1),
+                            math.min(#Dropdown.Values, MaxVisible) * RowHeight
+                        )
+                    end,
+                    function()
+                        return { 0, Header.AbsoluteSize.Y + 1 }
+                    end,
+                    2,
+                    function(Active)
+                        Dropdown.Opened = Active
+                        Arrow.Text = Active and "⌃" or "⌄"
+                    end,
+                    false,
+                    "bottom",
+                    "Dropdown"
+                )
+            end
+
+            local Buttons = {}
+
+            local function updateDisplay()
+                ValueLabel.Text = Dropdown.Value ~= nil
+                    and tostring(Dropdown.Value)
+                    or "---"
+
+                for value, button in pairs(Buttons) do
+                    button.BackgroundTransparency =
+                        Dropdown.Value == value and 0 or 1
+                end
+            end
+
+            local function runCallback()
+                if type(Dropdown.Callback) == "function" then
+                    Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
+                end
+            end
+
+            local function setOpen(open)
+                if Dropdown.Destroyed then return end
+
+                open = open == true
+
+                if Dropdown.Mode == "Inline" then
+                    Dropdown.Opened = open
+                    InlineList.Visible = open
+                    Arrow.Text = open and "⌃" or "⌄"
+                elseif FloatingMenu then
+                    if open then
+                        FloatingMenu:Open()
+                    else
+                        FloatingMenu:Close()
+                    end
+                end
+            end
+
+            local function buildValues()
+                for _, button in pairs(Buttons) do
+                    button:Destroy()
+                end
+                table.clear(Buttons)
+
+                local list = Dropdown.Mode == "Inline"
+                    and InlineList
+                    or FloatingMenu.Menu
+
+                for index, value in ipairs(Dropdown.Values) do
+                    local button = New("TextButton", {
+                        BackgroundColor3 = "MainColor",
+                        BackgroundTransparency = 1,
+                        AutoButtonColor = false,
+                        Size = UDim2.new(1, 0, 0, RowHeight),
+                        LayoutOrder = index,
+                        Text = tostring(value),
+                        TextSize = 14,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Parent = list,
+                    })
+
+                    New("UIPadding", {
+                        PaddingLeft = UDim.new(0, 12),
+                        PaddingRight = UDim.new(0, 12),
+                        Parent = button,
+                    })
+
+                    button.MouseButton1Click:Connect(function()
+                        if Dropdown.Destroyed then return end
+
+                        Dropdown.Value = value
+                        updateDisplay()
+                        runCallback()
+
+                        if Info.CloseOnSelect ~= false then
+                            setOpen(false)
+                        end
+                    end)
+
+                    Buttons[value] = button
+                end
+
+                if FloatingMenu then
+                    FloatingMenu:SetSize(function()
+                        return UDim2.fromOffset(
+                            Header.AbsoluteSize.X / (Library.DPIScale or 1),
+                            math.min(#Dropdown.Values, MaxVisible) * RowHeight
+                        )
+                    end)
+                end
+
+                updateDisplay()
+            end
+
+            function Dropdown:SetValue(value)
+                if self.Destroyed then return end
+                if not table.find(self.Values, value) then return end
+
+                self.Value = value
+                updateDisplay()
+                runCallback()
+            end
+
+            function Dropdown:SetValues(values)
+                if self.Destroyed then return end
+                assert(type(values) == "table", "Values 必须是数组")
+
+                self.Values = table.clone(values)
+
+                if not table.find(self.Values, self.Value) then
+                    self.Value = self.Values[1]
+                end
+
+                buildValues()
+            end
+
+            function Dropdown:SetTitle(title)
+                if self.Destroyed then return end
+
+                self.Title = tostring(title or "")
+                TitleLabel.Text = self.Title
+            end
+
+            function Dropdown:SetOpen(open)
+                setOpen(open)
+            end
+
+            function Dropdown:SetVisible(visible)
+                if self.Destroyed then return end
+
+                self.Visible = visible == true
+
+                if not self.Visible then
+                    setOpen(false)
+                end
+
+                BoxHolder.Visible = self.Visible
+            end
+
+            function Dropdown:Destroy()
+                if self.Destroyed then return end
+
+                setOpen(false)
+                self.Destroyed = true
+
+                for _, connection in ipairs(self.Connections) do
+                    connection:Disconnect()
+                end
+
+                if FloatingMenu then
+                    FloatingMenu:Destroy()
+                end
+
+                BoxHolder:Destroy()
+            end
+
+            Dropdown.BoxHolder = BoxHolder
+            Dropdown.Holder = Holder
+
+            table.insert(
+                Dropdown.Connections,
+                Header.MouseButton1Click:Connect(function()
+                    setOpen(not Dropdown.Opened)
+                end)
+            )
+
+            -- Default 可以是数组索引，也可以是选项值
+            if type(Info.Default) == "number" then
+                Dropdown.Value = Dropdown.Values[Info.Default]
+            elseif table.find(Dropdown.Values, Info.Default) then
+                Dropdown.Value = Info.Default
+            else
+                Dropdown.Value = Dropdown.Values[1]
+            end
+
+            buildValues()
+
+            if Info.DefaultOpen == true then
+                setOpen(true)
+            end
+
+            return Dropdown
         end
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
             return self:AddGroupbox({ Side = 1, Name = Name, IconName = IconName, Visible = Visible, Collapsed = Collapsed, DisableCollapsing = DisableCollapsing })
