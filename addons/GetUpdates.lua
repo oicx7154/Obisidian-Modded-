@@ -1,4 +1,4 @@
-return function(Groupbox)
+return function(Groupbox,Tab)
     local JSON_URL = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/Update%20Announcement.json"
 
     local DefaultImage = "rbxassetid://71686922157317"
@@ -160,7 +160,19 @@ return function(Groupbox)
     if hasEntries then
         showEntry(entryByChoice[choices[defaultIndex]])
     end
-    Tab.InfoTab:UserPanelBox({Title = "提示",IsNormal = true,Username = false,UserIcon = false,Text = "⏺️脚本名字\n🟢新增功能/脚本\n🔴删除功能/脚本\n🟡修复\n🟣优化"})
+    Tab.InfoTab:UserPanelBox({
+        Title = "提示",
+        IsNormal = true,
+        Username = false,
+        UserIcon = false,
+        Text = formatContent(
+            "⏺️脚本名字\n" ..
+            "🟢新增功能/脚本\n" ..
+            "🔴删除功能/脚本\n" ..
+            "🟡修复\n" ..
+            "🟣优化"
+        ),
+    })
     local image = Groupbox.mz:AddImage("", {
         Image = imageId,
         Height = 200,
