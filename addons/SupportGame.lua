@@ -80,7 +80,7 @@ return function(Tab)
         Side = "Right",
         Mode = "Inline",
         MaxVisibleItems = 4,
-
+        ListOnly = true,
         Values = authors,
         Default = 1,
 
