@@ -2,8 +2,9 @@ return function(Tab)
     local JSON_URL =  "https://raw.githubusercontent.com/用户名/仓库名/main/supportgame.json"
 
     local HttpService = game:GetService("HttpService")
-    if cloneref then
-    HttpService = cloneref(game:GetService("HttpService"))
+    
+    if type(cloneref) == "function" then
+        HttpService = cloneref(HttpService)
     end
 
     local authors = {}
