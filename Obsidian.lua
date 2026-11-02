@@ -14969,7 +14969,7 @@ function Library:CreateWindow(WindowInfo)
             local Arrow = New("ImageLabel", {
                 BackgroundTransparency = 1,
                 AnchorPoint = Vector2.new(1, 0.5),
-                Position = UDim2.new(1, -12, 0, 34),
+                Position = UDim2.new(1, -12, 0, 33.5),
                 Size = UDim2.fromOffset(16, 16),
 
                 Image = ArrowIcon and ArrowIcon.Url or "",
@@ -14981,6 +14981,7 @@ function Library:CreateWindow(WindowInfo)
                 ZIndex = 2,
                 Parent = Header,
             })
+
             local SelectBox = New("Frame", {
                 BackgroundColor3 = "MainColor",
                 Position = UDim2.fromOffset(8, 23),
@@ -15138,9 +15139,10 @@ function Library:CreateWindow(WindowInfo)
                 open = open == true
 
                 if Dropdown.Mode == "Inline" then
-                    Dropdown.Opened = open
+                    Dropdown.Opened = open  
                     Arrow.Rotation = open and 180 or 0
-
+                    Arrow.ImageTransparency = open and 0 or 0.5
+                    
                     stopInlineTween()
 
                     if open then
@@ -15195,11 +15197,15 @@ function Library:CreateWindow(WindowInfo)
                 if not ExpandButton then return end
 
                 if Dropdown.ListOnly then
-                    -- 只有列表时：放在标题右侧
+                    -- 列表模式：放在标题右侧
+                    ExpandButton.AnchorPoint = Vector2.new(1, 0)
                     ExpandButton.Position = UDim2.new(1, -10, 0, 4)
+                    ExpandButton.Size = UDim2.fromOffset(22, 20)
                 else
-                    -- 普通模式：放在下拉框内，箭头左侧
-                    ExpandButton.Position = UDim2.new(1, -34, 0, 23)
+                    -- 普通模式：放在下拉框内，靠近箭头
+                    ExpandButton.AnchorPoint = Vector2.new(1, 0.5)
+                    ExpandButton.Position = UDim2.new(1, -30, 0, 33.5)
+                    ExpandButton.Size = UDim2.fromOffset(16, 16)
                 end
             end
             function Dropdown:SetListOnly(enabled)
@@ -15385,6 +15391,7 @@ function Library:CreateWindow(WindowInfo)
             end
 
             function Dropdown:SetOpen(open)
+                
                 setOpen(open)
             end
 
@@ -15625,7 +15632,7 @@ function Library:CreateWindow(WindowInfo)
                         { BackgroundTransparency = 1 }
                     ):Play()
                 end)
-                
+
                 ExpandList = New("ScrollingFrame", {
                     AutomaticCanvasSize = Enum.AutomaticSize.Y,
                     BackgroundTransparency = 1,
