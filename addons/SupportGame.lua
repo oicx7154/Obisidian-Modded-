@@ -1,5 +1,5 @@
 return function(Tab)
-    local JSON_URL =  "https://raw.githubusercontent.com/oicx7154/Obisidian-Modded-/main/addons/Su.json"
+    local JSON_URL =  "https://raw.githubusercontent.com/luojunjun43-del/1/main/SupportGame.json"
 
     local HttpService = game:GetService("HttpService")
 
@@ -11,7 +11,6 @@ return function(Tab)
     local gamesByAuthor = {}
     local loadError
 
-    -- 读取 JSON
     local ok, result = pcall(function()
         local raw = game:HttpGet(JSON_URL)
         return HttpService:JSONDecode(raw)
@@ -75,6 +74,7 @@ return function(Tab)
         Side = "Right",
         RichText = false,
     })
+    
     local dropdown = Tab.support:AddParagraphDropdown({
         Title = "选择作者",
         Side = "Right",
@@ -91,7 +91,6 @@ return function(Tab)
             end
         end,
     })
-
 
     return dropdown, paragraph, tips
 end
