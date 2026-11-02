@@ -78,19 +78,58 @@ return function(Groupbox)
         true
     )
 
+    local function escapeRichText(text)
+        return tostring(text)
+            :gsub("&", "&amp;")
+            :gsub("<", "&lt;")
+            :gsub(">", "&gt;")
+            :gsub('"', "&quot;")
+            :gsub("'", "&apos;")
+    end
+    
+    local colors = {
+        ["+"] = "#55FF7F", -- 新增：绿色
+        ["-"] = "#FF5555", -- 删除 / 修复：红色
+        ["*"] = "#FFD75F", -- 优化：黄色
+    }
+    
+    local function formatContent(content)
+        local formatted = {}
+    
+        for line in (tostring(content) .. "\n"):gmatch("(.-)\n") do
+            local before, marker, after = line:match("^(.-)%[([+%-%*])%](.*)$")
+    
+            if marker then
+                table.insert(
+                    formatted,
+                    escapeRichText(before)
+                        .. "[" .. marker .. "]"
+                        .. '<font color="' .. colors[marker] .. '">'
+                        .. escapeRichText(after)
+                        .. "</font>"
+                )
+            else
+                table.insert(formatted, escapeRichText(line))
+            end
+        end
+    
+        return table.concat(formatted, "\n")
+    end
+    
     local function showEntry(entry)
         if not entry then
             return
         end
-
+    
         local dateVersion =
             tostring(entry.date or "") .. "(" .. tostring(entry.version or "") .. ")"
-
-        local content = tostring(entry.content or "")
-
-        announcementLabel:SetText(dateVersion .. "\n\n" .. content)
+    
+        local content = formatContent(entry.content or "")
+    
+        announcementLabel:SetText(
+            escapeRichText(dateVersion) .. "\n\n" .. content
+        )
     end
-
     local dropdown = Groupbox.gxxz:AddDropdown("更新日志", {
         Values = choices,
         Default = defaultIndex,
