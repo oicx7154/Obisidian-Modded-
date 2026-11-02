@@ -15253,6 +15253,18 @@ function Library:CreateWindow(WindowInfo)
                         if Dropdown.Destroyed then return end
 
                         Dropdown.Value = value
+                        if Dropdown.Mode == "Inline" then
+                            stopInlineTween()
+
+                            InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
+
+                            InlineList.Size = UDim2.new(
+                                1, 0,
+                                0, Dropdown.Opened and getInlineHeight() or 0
+                            )
+
+                            InlineList.Visible = Dropdown.Opened
+                        end
                         updateDisplay()
                         syncContent()
                         runCallback()
@@ -15319,7 +15331,7 @@ function Library:CreateWindow(WindowInfo)
             function Dropdown:SetOpen(open)
                 setOpen(open)
             end
-            
+
             local ExpandOverlay
             local ExpandList
             local ExpandTitle
@@ -15332,10 +15344,9 @@ function Library:CreateWindow(WindowInfo)
 
                 if not self.Visible then
                     setOpen(false)
-                    IsExpanded = false
-                    if ExpandOverlay then
-                        ExpandOverlay.Visible = false
-                    end
+                    self:Collapse()
+                elseif self.ListOnly then
+                    setOpen(true)
                 end
 
                 BoxHolder.Visible = self.Visible
@@ -15345,8 +15356,9 @@ function Library:CreateWindow(WindowInfo)
                 if self.Destroyed then return end
 
                 stopInlineTween()
+                self:Collapse()
                 self.Destroyed = true
-                
+
                 for _, connection in ipairs(self.Connections) do
                     connection:Disconnect()
                 end
@@ -15358,6 +15370,8 @@ function Library:CreateWindow(WindowInfo)
                 if ExpandOverlay then
                     ExpandOverlay:Destroy()
                     ExpandOverlay = nil
+                    ExpandList = nil
+                    ExpandTitle = nil
                 end
 
                 BoxHolder:Destroy()
@@ -15394,16 +15408,52 @@ function Library:CreateWindow(WindowInfo)
                 setOpen(true)
             end
             -- Expand 按钮：放在标题栏右侧
+            local ExpandIcon = Library:GetIcon("maximize-2")
+
             local ExpandButton = New("TextButton", {
                 AnchorPoint = Vector2.new(1, 0),
                 BackgroundTransparency = 1,
+                AutoButtonColor = false,
                 Position = UDim2.new(1, -10, 0, 4),
                 Size = UDim2.fromOffset(22, 20),
-                Text = "⛶",
-                TextSize = 18,
-                ZIndex = Header.ZIndex + 1,
+                Text = "",
+                Visible = Info.Expandable ~= false,
+                ZIndex = Header.ZIndex + 2,
                 Parent = Header,
             })
+
+            local ExpandIconImage = New("ImageLabel", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromOffset(16, 16),
+
+                Image = ExpandIcon and ExpandIcon.Url or "",
+                ImageColor3 = "FontColor",
+                ImageRectOffset = ExpandIcon and ExpandIcon.ImageRectOffset or Vector2.zero,
+                ImageRectSize = ExpandIcon and ExpandIcon.ImageRectSize or Vector2.zero,
+                ImageTransparency = 0.5,
+
+                ScaleType = Enum.ScaleType.Fit,
+                ZIndex = Header.ZIndex + 3,
+                Parent = ExpandButton,
+            })
+
+            ExpandButton.MouseEnter:Connect(function()
+                TweenService:Create(
+                    ExpandIconImage,
+                    Library.TweenInfo,
+                    { ImageTransparency = 0 }
+                ):Play()
+            end)
+
+            ExpandButton.MouseLeave:Connect(function()
+                TweenService:Create(
+                    ExpandIconImage,
+                    Library.TweenInfo,
+                    { ImageTransparency = 0.5 }
+                ):Play()
+            end)
 
             local function createExpandPanel()
                 if ExpandOverlay then
@@ -15426,15 +15476,16 @@ function Library:CreateWindow(WindowInfo)
                     Parent = Library.MainFrame,
                 })
 
-                local Panel = New("Frame", {
+                local Panel = New("TextButton", {
                     AnchorPoint = Vector2.new(0.5, 0.5),
+                    AutoButtonColor = false,
                     BackgroundColor3 = "BackgroundColor",
                     Position = UDim2.fromScale(0.5, 0.5),
                     Size = UDim2.fromScale(0.7, 0.72),
+                    Text = "",
                     ZIndex = 8001,
                     Parent = ExpandOverlay,
                 })
-
                 New("UICorner", {
                     CornerRadius = UDim.new(0, Library.CornerRadius),
                     Parent = Panel,
@@ -15544,7 +15595,11 @@ function Library:CreateWindow(WindowInfo)
             end
 
             function Dropdown:Expand()
-                if self.Destroyed or IsExpanded then
+                if self.Destroyed
+                    or not self.Visible
+                    or Info.Expandable == false
+                    or IsExpanded
+                then
                     return
                 end
 
@@ -15552,20 +15607,32 @@ function Library:CreateWindow(WindowInfo)
                     return
                 end
 
-                -- 普通下拉菜单先收起；ListOnly 则保持展开
+                -- 与原版 Dropdown 共用活动面板状态
+                local active = Library.ActiveExpandedDropdown
+
+                if active and active ~= self then
+                    active:Collapse()
+                end
+
+                -- 普通模式先收起下拉；ListOnly 保持列表展开
                 if not self.ListOnly then
-                    self:SetOpen(false)
+                    setOpen(false)
                 end
 
                 ExpandTitle.Text = self.Title
                 rebuildExpandList()
 
                 IsExpanded = true
+                Library.ActiveExpandedDropdown = self
                 ExpandOverlay.Visible = true
             end
 
             function Dropdown:Collapse()
                 IsExpanded = false
+
+                if Library.ActiveExpandedDropdown == self then
+                    Library.ActiveExpandedDropdown = nil
+                end
 
                 if ExpandOverlay then
                     ExpandOverlay.Visible = false
@@ -15574,6 +15641,14 @@ function Library:CreateWindow(WindowInfo)
 
             function Dropdown:IsExpanded()
                 return IsExpanded
+            end
+
+            function Dropdown:ToggleExpanded()
+                if self:IsExpanded() then
+                    self:Collapse()
+                else
+                    self:Expand()
+                end
             end
 
             table.insert(
