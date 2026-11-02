@@ -52,6 +52,7 @@ return function(Tab)
     end
 
     local dropdown
+    Tab.support:AddParagraph({Title = "提示",Content = "⏺️脚本名字\n" .."🟢新增功能/脚本\n" .."🔴删除功能/脚本\n" .."🟡修复\n" .."🟣优化",Side = "Right",RichText = false})
 
     dropdown = Tab.support:AddParagraphDropdown({
         Title = "作者支持的游戏",
