@@ -13292,7 +13292,18 @@ function Library:CreateWindow(WindowInfo)
                 Visible = true,
                 Parent = TabCanvas,
             })
+            local FullParagraphContainer = New("Frame", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, -5, 0, 0),
+                Parent = TabContainer,
+            })
 
+            New("UIListLayout", {
+                Padding = UDim.new(0, 6),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = FullParagraphContainer,
+            })
             TabLeft = New("ScrollingFrame", {
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 BackgroundTransparency = 1,
@@ -13325,18 +13336,6 @@ function Library:CreateWindow(WindowInfo)
                     Parent = TabLeft,
                 })
             end
-            local FullParagraphContainer = New("Frame", {
-                BackgroundTransparency = 1,
-                AutomaticSize = Enum.AutomaticSize.Y,
-                Size = UDim2.new(1, -5, 0, 0),
-                Parent = TabContainer,
-            })
-
-            New("UIListLayout", {
-                Padding = UDim.new(0, 6),
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Parent = FullParagraphContainer,
-            })
             TabRight = New("ScrollingFrame", {
                 AnchorPoint = Vector2.new(1, 0),
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -13729,6 +13728,7 @@ function Library:CreateWindow(WindowInfo)
                 TabLeft,
                 TabRight,
             },
+            FullParagraphContainer = FullParagraphContainer,
 
             UserPanelState = {
                 Defined = false,
@@ -13743,7 +13743,6 @@ function Library:CreateWindow(WindowInfo)
                 UserIcon = nil,
                 Information = {},
             },
-            FullParagraphContainer = FullParagraphContainer,
 
             Groupboxes = {},
             Tabboxes = {},
@@ -13897,7 +13896,7 @@ function Library:CreateWindow(WindowInfo)
                 end
             end)
         )
-
+        Tab:RefreshSides()
         function Tab:Resize(ResizeUserPanelBox: boolean?)
             if ResizeUserPanelBox then
                 local CurrentState = Tab.UserPanelState
