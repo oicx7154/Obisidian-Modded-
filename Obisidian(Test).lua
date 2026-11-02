@@ -14871,7 +14871,6 @@ function Library:CreateWindow(WindowInfo)
             local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
 
             if IsFull and not Owner.FullParagraphContainer then
-                error("当前 Tab 没有 FullParagraphContainer", 2)
             end
 
             local ParentContainer = IsFull
@@ -14918,6 +14917,7 @@ function Library:CreateWindow(WindowInfo)
                 BackgroundColor3 = "BackgroundColor",
                 AutomaticSize = Enum.AutomaticSize.Y,
                 Size = UDim2.new(1, 0, 0, 0),
+                ClipsDescendants = true,
                 Parent = BoxHolder,
             })
 
@@ -14974,13 +14974,39 @@ function Library:CreateWindow(WindowInfo)
                 TextSize = 20,
                 Parent = Header,
             })
+            -- Dropdown 和段落联合：显示公告内容
+            local ContentLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 2,
 
+                Text = tostring(Info.Content or ""),
+                TextSize = Info.ContentSize or 14,
+                TextWrapped = true,
+                RichText = Info.RichText == true,
+
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Top,
+
+                Visible = Info.Content ~= nil and tostring(Info.Content) ~= "",
+                Parent = Holder,
+            })
+
+            New("UIPadding", {
+                PaddingLeft = UDim.new(0, 12),
+                PaddingRight = UDim.new(0, 12),
+                PaddingBottom = UDim.new(0, 8),
+                Parent = ContentLabel,
+            })
+
+            Dropdown.ContentLabel = ContentLabel
             -- 内嵌模式的选项容器
             local InlineList = New("Frame", {
                 BackgroundTransparency = 1,
                 AutomaticSize = Enum.AutomaticSize.Y,
                 Size = UDim2.new(1, 0, 0, 0),
-                LayoutOrder = 2,
+                LayoutOrder = 3,
                 Visible = false,
                 Parent = Holder,
             })
@@ -15137,7 +15163,13 @@ function Library:CreateWindow(WindowInfo)
                 self.Title = tostring(title or "")
                 TitleLabel.Text = self.Title
             end
+            function Dropdown:SetContent(content)
+                if self.Destroyed then return end
 
+                content = tostring(content or "")
+                ContentLabel.Text = content
+                ContentLabel.Visible = content ~= ""
+            end
             function Dropdown:SetOpen(open)
                 setOpen(open)
             end
