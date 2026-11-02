@@ -85,24 +85,37 @@ return function(Groupbox)
         return result
     end
     
-    local colors = {
-        ["+"] = "#55FF7F", -- 新增：绿色
-        ["-"] = "#FF5555", -- 删除 / 修复：红色
-        ["*"] = "#FFD75F", -- 优化：黄色
+    local markers = {
+        { symbol = "🟢", color = "#55FF7F" },
+        { symbol = "🔴", color = "#FF5555" },
+        { symbol = "🟡", color = "#FFD75F" },
+        { symbol = "🟣", color = "#C77DFF" }
     }
     
     local function formatContent(content)
         local formatted = {}
     
         for line in (tostring(content) .. "\n"):gmatch("(.-)\n") do
-            local before, marker, after = line:match("^(.-)%[([+%-%*])%](.*)$")
+            local foundStart, foundEnd, foundColor
     
-            if marker then
+            for _, marker in ipairs(markers) do
+                local startPos, endPos = line:find(marker.symbol, 1, true)
+    
+                if startPos and (not foundStart or startPos < foundStart) then
+                    foundStart = startPos
+                    foundEnd = endPos
+                    foundColor = marker.color
+                end
+            end
+    
+            if foundStart then
+                local before = line:sub(1, foundStart - 1)
+                local after = line:sub(foundEnd + 1)
+    
                 table.insert(
                     formatted,
                     escapeRichText(before)
-                        .. "[" .. marker .. "]"
-                        .. '<font color="' .. colors[marker] .. '">'
+                        .. '<font color="' .. foundColor .. '">'
                         .. escapeRichText(after)
                         .. "</font>"
                 )
