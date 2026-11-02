@@ -13898,7 +13898,6 @@ function Library:CreateWindow(WindowInfo)
             end)
         )
 
-        Tab:RefreshSides()
         function Tab:Resize(ResizeUserPanelBox: boolean?)
             if ResizeUserPanelBox then
                 local CurrentState = Tab.UserPanelState
