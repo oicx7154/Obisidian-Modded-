@@ -15140,8 +15140,8 @@ function Library:CreateWindow(WindowInfo)
 
                 if Dropdown.Mode == "Inline" then
                     Dropdown.Opened = open  
-                    Arrow.Rotation = open and 0 or 180
-                    Arrow.ImageTransparency = open and 0 or 0.5
+                    Arrow.Rotation = open and 180 or 0
+                    Arrow.ImageTransparency = open and 0.5 or 0
                     
                     stopInlineTween()
 
