@@ -1,0 +1,248 @@
+---
+title: 'Keybind'
+description: 'Keybinds attach keyboard shortcuts to toggles or labels for quick actions.'
+---
+
+import KeybindPlayground from '@/components/demo/playground/Keybind';
+import { TypeTable } from '@/components/type-table';
+
+## Playground
+
+<KeybindPlayground />
+
+## Usage
+
+You can create a Keybind by calling the `AddKeyPicker` method on a toggle or label reference.
+Keybinds can hang off any element that returns a reference (for example `AddToggle` or `AddLabel`).
+
+Right clicking the keybind opens a menu to change its mode. The `Remove` option at the bottom of that menu unbinds the key (sets it to `None`).
+
+### Arguments
+
+```lua
+local Toggle = Groupbox:AddToggle("MyToggle", {
+    Text = "Example Toggle",
+    Default = false,
+})
+
+local Keybind = Toggle:AddKeyPicker("MyKeybind", {
+    Text = "Example Keybind",
+    Default = "F",
+    Mode = "Toggle",
+})
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | Index/ID of the keybind | string | nil |
+| 2 | Keybind configuration table | table | nil |
+
+### Configuration Table
+
+<TypeTable
+  type={{
+    Text: {
+      description: "The keybind's text shown in the UI",
+      type: 'string',
+      default: '"KeyPicker"',
+      required: false
+    },
+    Default: {
+      description: 'Initial key assigned to the keybind',
+      type: 'string',
+      default: '"None"',
+      required: false
+    },
+    DefaultModifiers: {
+      description: 'Initial modifier key(s) assigned to the main key ("LAlt", "RAlt", "LCtrl", "RCtrl", "LShift", "RShift", "Tab", "CapsLock")',
+      type: 'table',
+      default: '{}',
+      required: false
+    },
+    Mode: {
+      description: 'Operation mode ("Toggle", "Hold", "Always", "Press")',
+      type: 'string',
+      default: '"Toggle"',
+      required: false
+    },
+    SyncToggleState: {
+      description: 'Whether to synchronise with the parent toggle state',
+      type: 'boolean',
+      default: 'false',
+      required: false
+    },
+    WaitForCallback: {
+      description: '*Press mode only.* Locks the keybind while callbacks run',
+      type: 'boolean',
+      default: 'false',
+      required: false
+    },
+    Modes: {
+      description: 'Custom list of available modes',
+      type: 'table',
+      default: '{"Always", "Toggle", "Hold"}',
+      required: false
+    },
+    NoUI: {
+      description: 'Hide the keybind from the Keybind Menu and its visibility settings panel',
+      type: 'boolean',
+      default: 'false',
+      required: false
+    },
+    Blacklist: {
+      description: 'List of disallowed keys',
+      type: 'table',
+      default: '{}',
+      required: false
+    },
+    Whitelisted: {
+      description: 'List of allowed keys (overrides all other keys if not empty)',
+      type: 'table',
+      default: '{}',
+      required: false
+    },
+    BlacklistModifiers: {
+      description: 'List of disallowed modifier keys',
+      type: 'table',
+      default: '{}',
+      required: false
+    },
+    WhitelistedModifiers: {
+      description: 'List of allowed modifier keys',
+      type: 'table',
+      default: '{}',
+      required: false
+    },
+    Callback: {
+      description: 'Function fired when the keybind state changes',
+      type: 'function',
+      default: 'function() end',
+      required: false
+    },
+    ChangedCallback: {
+      description: 'Function fired when the keybind binding changes',
+      type: 'function',
+      default: 'function() end',
+      required: false
+    },
+    Clicked: {
+      description: 'Function fired when the keybind button is clicked',
+      type: 'function',
+      default: 'function() end',
+      required: false
+    }
+  }}
+/>
+
+## Methods
+
+You can use the following methods to interact with the keybind:
+
+#### SetValue
+Sets the key and mode.
+
+```lua
+Keybind:SetValue({ "F", "Toggle" })
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | Table containing `{ key, mode, modifiers? }` | table | nil |
+
+#### GetState
+Returns whether the keybind is active.
+
+```lua
+local state = Keybind:GetState()
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | *No arguments* | – | – |
+
+#### SetText
+Updates the keybind's text.
+
+```lua
+Keybind:SetText(text)
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | New keybind text | string | nil |
+
+#### SetMenuVisibility
+Shows or hides this keybind in the [Keybind Menu](/obsidian/core/library/keybind-menu).
+
+```lua
+Keybind:SetMenuVisibility(false)
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | Whether this keybind should appear in the keybind menu | boolean | nil |
+
+#### Update
+Refreshes the keybind display.
+
+```lua
+Keybind:Update()
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | *No arguments* | – | – |
+
+#### OnClick
+Sets the click callback.
+
+```lua
+Keybind:OnClick(function)
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | Callback executed on click | function | nil |
+
+#### OnChanged
+Sets the change callback.
+
+```lua
+Keybind:OnChanged(function)
+```
+
+| Arg Idx | Argument Description | Type | Default |
+| --- | --- | --- | --- |
+| 1 | Callback executed when the keybind changes | function | nil |
+
+#### Destroy
+Destroys the keybind and removes it from the UI.
+
+```lua
+Keybind:Destroy()
+```
+
+## Example
+
+```lua
+local Options = Library.Options
+
+local Toggle = Groupbox:AddToggle("AutoFarm", {
+    Text = "Enable Auto Farm",
+    Default = false,
+})
+
+local Keybind = Toggle:AddKeyPicker("AutoFarmKey", {
+    Default = "F",
+    Text = "Auto Farm Key",
+    Mode = "Toggle",
+})
+
+Options.AutoFarmKey:OnClick(function()
+    print("Keybind clicked:", Options.AutoFarmKey:GetState())
+end)
+
+Options.AutoFarmKey:OnChanged(function()
+    print("Key changed to:", table.unpack(Options.AutoFarmKey.Modifiers or {}), Options.AutoFarmKey.Value)
+end)
+```

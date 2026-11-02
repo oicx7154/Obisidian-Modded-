@@ -1,0 +1,54 @@
+---
+title: 'Roblox Studio'
+description: 'Install Obsidian in Roblox Studio'
+---
+
+## Installing Obsidian in Roblox Studio
+To install Obsidian in Roblox Studio, you can copy the [Library.lua](https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.lua) file into a modulescript and require it.
+
+```lua
+local Library = require(game:GetService("ReplicatedStorage"):WaitForChild("Obsidian"))
+```
+
+### Setting up Icons
+
+If you want icon support, save [Molto](https://raw.githubusercontent.com/notpoiu/Molto/refs/heads/main/source.lua) as a modulescript and require it.
+
+```lua
+local Library = require(game:GetService("ReplicatedStorage"):WaitForChild("Obsidian"))
+local Icons = require(game:GetService("ReplicatedStorage"):WaitForChild("Molto"))
+Icons.SetProvider("lucide")
+
+-- Set Library Icon Module
+Library:SetIconModule(Icons)
+```
+
+<Callout type="warn">
+    Make sure to **use SetIconModule before you create anything UI related** (such as the window)
+</Callout>
+
+---
+
+
+Then, you should be good to go! You can start by checking out the [Window](/obsidian/core/library/Window) section to create your first window, tab, groupbox and UI elements.
+
+If you are too lazy to read the documentation, you can also check out the [example script](https://github.com/deividcomsono/Obsidian/blob/main/Example.lua).
+
+
+## Addons
+Due to Roblox Studio's limitations, only one addon is available for Roblox Studio at the moment. The [ThemeManager](/obsidian/core/addons/thememanager) addon is available to use (and it will not be able to save themes).
+
+### Installing ThemeManager
+To install the ThemeManager addon, you can copy the [addons/ThemeManager.lua](https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua) file into a modulescript and require it.
+
+```lua
+local Obsidian = game:GetService("ReplicatedStorage"):WaitForChild("Obsidian")
+
+local Library = require(Obsidian)
+local ThemeManager = require(Obsidian:WaitForChild("ThemeManager"))
+```
+
+## Types
+The library comes with a type definition file for the lsp.
+
+You can find the type definition file [here](https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.d.luau).

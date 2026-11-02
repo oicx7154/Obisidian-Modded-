@@ -1,0 +1,23 @@
+---
+title: 'Executor'
+description: 'Install Obsidian in an executor environment'
+---
+
+## Using Obsidian in an Executor Environment
+To use Obsidian in an executor environment, you can use the following code snippet to get the library:
+
+```lua
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.lua"))()
+```
+
+Then, you should be good to go! You can start by checking out the [Window](/obsidian/core/library/Window) section to create your first window, tab, groupbox and UI elements.
+
+If you are too lazy to read the documentation, you can also check out the [example script](https://github.com/deividcomsono/Obsidian/blob/main/Example.lua).
+
+## Addons
+The library comes with several built-in addons such as [ThemeManager](/obsidian/core/addons/thememanager) and [SaveManager](/obsidian/core/addons/savemanager).
+
+## Types
+The library comes with a type definition file for [luau lsp](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp) to help with autocompletion.
+
+You can find the type definition file [here](https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.d.luau).
