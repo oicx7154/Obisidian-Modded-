@@ -13325,7 +13325,18 @@ function Library:CreateWindow(WindowInfo)
                     Parent = TabLeft,
                 })
             end
+            local FullParagraphContainer = New("Frame", {
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.Y,
+                Size = UDim2.new(1, -5, 0, 0),
+                Parent = TabContainer,
+            })
 
+            New("UIListLayout", {
+                Padding = UDim.new(0, 6),
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = FullParagraphContainer,
+            })
             TabRight = New("ScrollingFrame", {
                 AnchorPoint = Vector2.new(1, 0),
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -13732,6 +13743,7 @@ function Library:CreateWindow(WindowInfo)
                 UserIcon = nil,
                 Information = {},
             },
+            FullParagraphContainer = FullParagraphContainer,
 
             Groupboxes = {},
             Tabboxes = {},
@@ -13851,14 +13863,42 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Tab:RefreshSides()
-            local Offset = WarningBoxHolder.Visible and WarningBox.Size.Y.Offset + 8 or 0
+            local WarningOffset = WarningBoxHolder.Visible
+                and WarningBox.Size.Y.Offset + 8
+                or 0
+
+            local FullHeight = 0
+            local Container = Tab.FullParagraphContainer
+
+            if Container then
+                Container.Position = UDim2.fromOffset(0, WarningOffset)
+
+                -- AbsoluteSize 为屏幕像素；按库现有方式转成逻辑尺寸
+                local Scale = Library.DPIScale or 1
+                if Scale <= 0 then
+                    Scale = 1
+                end
+
+                FullHeight = Container.AbsoluteSize.Y / Scale
+            end
+
+            local Offset = WarningOffset + FullHeight
+
             for _, Side in Tab.Sides do
                 Side.Position = UDim2.new(Side.Position.X.Scale, 0, 0, Offset)
                 Side.Size = UDim2.new(0.5, -3, 1, -Offset)
             end
-
         end
+        table.insert(
+            Tab.Connections,
+            FullParagraphContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                if not Tab.Destroyed then
+                    Tab:RefreshSides()
+                end
+            end)
+        )
 
+        Tab:RefreshSides()
         function Tab:Resize(ResizeUserPanelBox: boolean?)
             if ResizeUserPanelBox then
                 local CurrentState = Tab.UserPanelState
@@ -14686,24 +14726,52 @@ function Library:CreateWindow(WindowInfo)
             Info = Info or {}
 
             local Owner = self
+
+            local IsFull = Info.Side == "Full"
             local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+
+            if IsFull and not Owner.FullParagraphContainer then
+            end
+
+            local ParentContainer = IsFull
+                and Owner.FullParagraphContainer
+                or Owner.Sides[Side]
 
             local Paragraph = {
                 Title = tostring(Info.Title or ""),
                 Content = tostring(Info.Content or ""),
                 Visible = Info.Visible ~= false,
                 Destroyed = false,
-                Connections = {},
                 Type = "Paragraph",
             }
 
-            -- 外层容器：直接放进 Tab 的左列或右列
+            -- 外层间距与 Groupbox 保持一致
+            local BoxHolder = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                Visible = Paragraph.Visible,
+                LayoutOrder = Info.LayoutOrder or 0,
+                Parent = ParentContainer,
+            })
+
+            New("UIListLayout", {
+                Padding = UDim.new(0, 6),
+                Parent = BoxHolder,
+            })
+
+            New("UIPadding", {
+                PaddingTop = UDim.new(0, 4),
+                PaddingBottom = UDim.new(0, 4),
+                Parent = BoxHolder,
+            })
+
+            -- 可见卡片
             local Holder = New("Frame", {
                 BackgroundColor3 = "BackgroundColor",
                 AutomaticSize = Enum.AutomaticSize.Y,
                 Size = UDim2.new(1, 0, 0, 0),
-                Visible = Paragraph.Visible,
-                Parent = Owner.Sides[Side],
+                Parent = BoxHolder,
             })
 
             table.insert(
@@ -14761,6 +14829,7 @@ function Library:CreateWindow(WindowInfo)
                 Parent = Holder,
             })
 
+            Paragraph.BoxHolder = BoxHolder
             Paragraph.Holder = Holder
             Paragraph.TitleLabel = TitleLabel
             Paragraph.ContentLabel = ContentLabel
@@ -14785,19 +14854,14 @@ function Library:CreateWindow(WindowInfo)
                 if self.Destroyed then return end
 
                 self.Visible = Visible == true
-                Holder.Visible = self.Visible
+                BoxHolder.Visible = self.Visible
             end
 
             function Paragraph:Destroy()
                 if self.Destroyed then return end
 
                 self.Destroyed = true
-
-                for _, Connection in ipairs(self.Connections) do
-                    Connection:Disconnect()
-                end
-
-                Holder:Destroy()
+                BoxHolder:Destroy()
             end
 
             return Paragraph
