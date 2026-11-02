@@ -14976,7 +14976,7 @@ function Library:CreateWindow(WindowInfo)
                 ImageColor3 = "FontColor",
                 ImageRectOffset = ArrowIcon and ArrowIcon.ImageRectOffset or Vector2.zero,
                 ImageRectSize = ArrowIcon and ArrowIcon.ImageRectSize or Vector2.zero,
-                ImageTransparency = 0.5,
+                ImageTransparency = 0,
 
                 ZIndex = 2,
                 Parent = Header,
@@ -15139,9 +15139,10 @@ function Library:CreateWindow(WindowInfo)
                 open = open == true
 
                 if Dropdown.Mode == "Inline" then
-                    Dropdown.Opened = open
+                    Dropdown.Opened = open  
                     Arrow.Rotation = open and 180 or 0
-
+                    Arrow.ImageTransparency = open and 0.5 or 0
+                    
                     stopInlineTween()
 
                     if open then
