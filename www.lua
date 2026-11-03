@@ -14553,7 +14553,6 @@ function Library:CreateWindow(WindowInfo)
 
             if Dropdown.Mode == "Floating" then
                 FloatingMenu = Library:AddContextMenu(
-                    -- 以选择框本身为定位对象
                     SelectBox,
 
                     function()
@@ -14564,7 +14563,6 @@ function Library:CreateWindow(WindowInfo)
                     end,
 
                     function()
-                        -- 使用原版 Dropdown 的偏移
                         return { 0.5, SelectBox.AbsoluteSize.Y + 1.5 }
                     end,
 
@@ -14572,12 +14570,9 @@ function Library:CreateWindow(WindowInfo)
 
                     function(active)
                         Dropdown.Opened = active
-
-                        -- 和你当前 Inline 的方向、高亮保持一致
                         Arrow.Rotation = active and 180 or 0
                         Arrow.ImageTransparency = active and 0 or 0.5
 
-                        -- 展开时选择框底部变直，与菜单顶部连接
                         local bottomRadius = active
                             and UDim.new(0, 0)
                             or UDim.new(0, Library.CornerRadius / 2)
@@ -14587,24 +14582,25 @@ function Library:CreateWindow(WindowInfo)
                     end,
 
                     false,
-
-                    -- 菜单顶部直角、底部圆角
                     "bottom",
-
-                    -- 使用库里的 Dropdown 展开/收起动画
                     "Dropdown"
                 )
 
-                FloatingMenu.Menu.ScrollingDirection = Enum.ScrollingDirection.Y
-                FloatingMenu.Menu.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                FloatingMenu.Menu.CanvasSize = UDim2.fromOffset(0, 0)
-                FloatingMenu.Menu.ScrollBarThickness = 2
-
-                FloatingMenu.Menu.ScrollingEnabled = #Dropdown.Values > MaxVisible
-
-                if FloatingMenu.List then
+                -- 新版 List = 2 时不会自动创建列表布局
+                if not FloatingMenu.List then
+                    FloatingMenu.List = New("UIListLayout", {
+                        SortOrder = Enum.SortOrder.LayoutOrder,
+                        Parent = FloatingMenu.Menu,
+                    })
+                else
                     FloatingMenu.List.SortOrder = Enum.SortOrder.LayoutOrder
                 end
+
+                FloatingMenu.Menu.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                FloatingMenu.Menu.CanvasSize = UDim2.fromOffset(0, 0)
+                FloatingMenu.Menu.ScrollingDirection = Enum.ScrollingDirection.Y
+                FloatingMenu.Menu.ScrollBarThickness = 2
+                FloatingMenu.Menu.ScrollingEnabled = #Dropdown.Values > MaxVisible
             end
             local ExpandOverlay
             local ExpandList
