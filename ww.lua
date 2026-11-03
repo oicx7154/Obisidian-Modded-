@@ -15,7 +15,6 @@ local getgenv = getgenv or function()
     return shared
 end
 local setclipboard = setclipboard or nil
-local SetClipboard = setclipboard
 local protectgui = protectgui or (syn and syn.protect_gui) or function() end
 local gethui = gethui or function()
     return CoreGui
@@ -13047,7 +13046,7 @@ function Library:CreateWindow(WindowInfo)
         local function AddFooterSegment(Info)
             local Text = tostring(Info.Text or "")
             --// Copyable is opt in per segment, and impossible without a clipboard
-            local Copyable = Info.Copyable == true and SetClipboard ~= nil
+            local Copyable = Info.Copyable == true and setclipboard ~= nil
 
             local Label = New("TextLabel", {
                 Active = Copyable,
@@ -13109,7 +13108,7 @@ function Library:CreateWindow(WindowInfo)
             
             local function Copy()
                 print("[Footer] 点击已触发")
-                local Success, Err = pcall(SetClipboard, CopyValue)
+                local Success, Err = pcall(setclipboard, CopyValue)
                 if not Success then
                     warn("[Footer] 复制失败:", Err)
                     return
