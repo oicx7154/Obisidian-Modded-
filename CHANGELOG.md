@@ -1,3 +1,13 @@
+# 更新日志
+
+**更新日期：** 2026-11-3
+
+### 新增
+
+- 新增 **Paragraph（段落）**。
+- 新增 **ParagraphDropdown（段落下拉框）**。
+
+---
 # 新增功能
 
 与原版相比，新增了 **Paragraph（段落）** 和 **ParagraphDropdown（段落下拉框）**。
