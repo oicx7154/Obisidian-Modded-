@@ -15938,17 +15938,10 @@ function Library:CreateWindow(WindowInfo)
                 if ExpandOverlay then
                     return true
                 end
-print("MainFrame:", Library.MainFrame)
+                local ExpandParent = Library.WindowContainer
 
-local ok, err = pcall(function()
-    dropdown:Expand()
-end)
-
-print("Expand 调用成功:", ok)
-print("错误:", err)
-print("展开状态:", dropdown:IsExpanded())
-                if not Library.MainFrame then
-                    
+                if not ExpandParent then
+                    warn("ParagraphDropdown: 找不到 Library.WindowContainer，无法创建 Expand 面板")
                     return false
                 end
 
@@ -15960,9 +15953,16 @@ print("展开状态:", dropdown:IsExpanded())
                     Text = "",
                     Visible = false,
                     ZIndex = 8000,
-                    Parent = Library.MainFrame,
+                    Parent = ExpandParent,
                 })
+print("WindowContainer:", Library.WindowContainer)
 
+local ok, err = pcall(function()
+    dropdown:Expand()
+end)
+
+print("调用成功:", ok, "错误:", err)
+print("展开状态:", dropdown:IsExpanded())
                 local Panel = New("TextButton", {
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     AutoButtonColor = false,
