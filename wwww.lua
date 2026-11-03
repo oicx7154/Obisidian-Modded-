@@ -15955,14 +15955,14 @@ function Library:CreateWindow(WindowInfo)
                     ZIndex = 8000,
                     Parent = ExpandParent,
                 })
-print("WindowContainer:", Library.WindowContainer)
-
-local ok, err = pcall(function()
+local ok, err = xpcall(function()
     dropdown:Expand()
-end)
+end, debug.traceback)
 
-print("调用成功:", ok, "错误:", err)
-print("展开状态:", dropdown:IsExpanded())
+print("调用成功:", ok)
+if not ok then
+    warn(err)
+end
                 local Panel = New("TextButton", {
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     AutoButtonColor = false,
