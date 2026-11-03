@@ -7185,7 +7185,7 @@ do
                 Info.DisabledTooltip = Params.DisabledTooltip
                 Info.Risky = Params.Risky or false
                 Info.Disabled = Params.Disabled or false
-                Info.Visible = Params.Visible or true
+                Info.Visible ~= false
                 Info.Idx = typeof(Second) == "table" and First or nil
             else
                 Info.Text = First or ""
