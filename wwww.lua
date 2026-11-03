@@ -554,7 +554,10 @@ local Templates = {
         DragSelect = false,
         MaxVisibleDropdownItems = 8,
         KeepDisabledValuePosition = false,
-
+        --// Opens the values in a large panel over the window
+        Expandable = true,
+        ExpandColumns = 2,
+        
         Callback = function() end,
         Changed = function() end,
 
@@ -2613,6 +2616,8 @@ function Library:AddBlank(Frame: GuiObject, Size: UDim2)
         Parent = Frame,
     })
 end
+--// Expanded dropdown panel open and close
+local DROPDOWN_EXPAND_TWEEN = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 --// Animations \\--
 local TransparencyCache = {}
