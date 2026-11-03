@@ -14,7 +14,8 @@ local TweenService: TweenService = cloneref(game:GetService("TweenService"))
 local getgenv = getgenv or function()
     return shared
 end
-local setclipboard = setclipboard or nil
+local setclipboard = setclipboard or nil or toclipboard
+
 local protectgui = protectgui or (syn and syn.protect_gui) or function() end
 local gethui = gethui or function()
     return CoreGui
@@ -13021,10 +13022,17 @@ function Library:CreateWindow(WindowInfo)
         })
 
         --// Footer \\-
+        --// The footer is a row of segments; each one is plain or copyable
+        local FooterHolder = New("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            Parent = BottomBar,
+        })
         FooterLabel = New("TextLabel", {
             BackgroundTransparency = 1,
             Size = UDim2.fromScale(1, 1),
-            Text = typeof(WindowInfo.Footer) == "string" and WindowInfo.Footer or "",
+            Text = "",
+            Visible = false,
             TextSize = 14,
             TextTransparency = 0.5,
             Parent = BottomBar,
@@ -13039,23 +13047,24 @@ function Library:CreateWindow(WindowInfo)
         local function AddFooterSegment(Info)
             local Text = tostring(Info.Text or "")
             --// Copyable is opt in per segment, and impossible without a clipboard
-            local Copyable = Info.Copyable == true and SetClipboard ~= nil
+            local Copyable = Info.Copyable == true and setclipboard ~= nil
 
             local Label = New("TextLabel", {
+                Active = Copyable,
                 AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1,
                 Size = UDim2.new(0, 0, 1, 0),
                 Text = Text,
-                TextColor3 = Copyable and "BlueColor" or "FontColor",
+                TextColor3 = Copyable and Color3.fromRGB(0, 153, 255),
                 TextSize = 14,
                 TextTransparency = Copyable and 0 or 0.5,
                 Parent = FooterHolder,
             })
             table.insert(FooterSegments, Label)
 
-        if not Copyable then
-            return Label
-        end
+            if not Copyable then
+                return Label
+            end
 
             local CopyValue = tostring(Info.CopyText or Text)
             local CopyIcon = Library:GetIcon("copy")
@@ -13086,7 +13095,7 @@ function Library:CreateWindow(WindowInfo)
 
             local CopyImage = New("ImageLabel", {
                 Image = CopyIcon and CopyIcon.Url or "",
-                ImageColor3 = "BlueColor",
+                ImageColor3 = Color3.fromRGB(0, 153, 255),
                 ImageRectOffset = CopyIcon and CopyIcon.ImageRectOffset or Vector2.zero,
                 ImageRectSize = CopyIcon and CopyIcon.ImageRectSize or Vector2.zero,
                 ScaleType = Enum.ScaleType.Fit,
@@ -13097,8 +13106,9 @@ function Library:CreateWindow(WindowInfo)
             Library:AddTooltip("复制到剪贴板", nil, CopyButton)
 
             local ResetThread
+            
             local function Copy()
-                local Success = pcall(SetClipboard, CopyValue)
+                local Success =pcall(setclipboard, CopyValue)
                 if not Success then
                     return
                 end
@@ -13172,35 +13182,7 @@ function Library:CreateWindow(WindowInfo)
             end
         end
 
-        --// The minimized card shows the same footer, flattened to plain text since it
-        --// has no room for per segment copy buttons
-        function BuildMiniFooter(Footer)
-            if not MiniFooter then
-                return
-            end
-
-            if typeof(Footer) == "string" then
-                MiniFooter.Text = Footer
-            else
-                local Parts = {}
-
-                for _, Segment in Footer do
-                    if typeof(Segment) == "string" then
-                        table.insert(Parts, Segment)
-                    elseif typeof(Segment) == "table" and Segment.Text ~= nil then
-                        table.insert(Parts, tostring(Segment.Text))
-                    end
-                end
-
-                MiniFooter.Text = table.concat(Parts, " ")
-            end
-
-            MiniFooterHolder.Visible = MiniFooter.Text ~= ""
-        end
-
         BuildFooter(WindowInfo.Footer)
-        BuildMiniFooter(WindowInfo.Footer)
-
         --// Resize Button \\--
         if WindowInfo.Resizable then
             ResizeButton = New("TextButton", {
@@ -13350,12 +13332,11 @@ function Library:CreateWindow(WindowInfo)
         HasBackgroundImage = ValidIcon
         WindowInfo.BackgroundImage = Image
     end
-
+    --// A string, or a list of segments: { Text, Copyable, CopyText }
     function Window:SetFooter(Footer: string)
         assert(typeof(Footer) == "string", "Expected string for footer got: " .. typeof(Footer))
 
         BuildFooter(Footer)
-        BuildMiniFooter(Footer)
         WindowInfo.Footer = Footer
     end
 
@@ -17672,7 +17653,7 @@ function Library:CreateWindow(WindowInfo)
                 BackgroundTransparency = 1,
                 Size = UDim2.fromOffset(0, 26),
                 LayoutOrder = ButtonInfo.Order or 0,
-                ZIndex = 2,
+                ZIndex = 9002,
                 Parent = ButtonsHolder,
             })
 
@@ -17832,6 +17813,129 @@ function Library:CreateWindow(WindowInfo)
 
         Library.ActiveDialog = Dialog
         return Dialog
+    end
+    --// Sequential pre-window popups
+    -- Uses the official AddDialog frame, footer-button renderer, outline, and
+    -- theme system. Popups are queued before CreateWindow and shown in order.
+
+    function Library:AddNextPopup(Info)
+        return Library:AddPopup(Info)
+    end
+
+    function Library:_RunPopupQueue(Window, AutoShow)
+        if Library.PopupSequenceRunning then
+            return
+        end
+
+        if #Library.PopupQueue == 0 then
+            if AutoShow and Window and not Library.Unloaded then
+                task.defer(function()
+                    if not Library.Unloaded then
+                        Window:Toggle(true)
+                    end
+                end)
+            end
+            return
+        end
+
+        Library.PopupSequenceRunning = true
+        Library.PopupWindow = Window
+        Library.PopupParent = Library.ScreenGui
+        Library.PopupSequenceId += 1
+
+        local MainFrame = Library.MainFrame
+        if MainFrame then
+            MainFrame.Visible = false
+        end
+
+        local function Finish()
+            Library.PopupSequenceRunning = false
+            Library.PopupWindow = nil
+            Library.PopupParent = nil
+
+            if AutoShow and Window and not Library.Unloaded then
+                task.defer(function()
+                    if not Library.Unloaded then
+                        Window:Toggle(true)
+                    end
+                end)
+            end
+        end
+
+        local function ShowNext()
+            if Library.Unloaded or not Window then
+                Library.PopupQueue = {}
+                Finish()
+                return
+            end
+
+            local Data = table.remove(Library.PopupQueue, 1)
+            if not Data then
+                Finish()
+                return
+            end
+
+            local PopupId = "NndPopup_" .. tostring(Library.PopupSequenceId) .. "_" .. tostring(os.clock())
+            local Dialog = Window:AddDialog(PopupId, {
+                Title = Data.Title,
+                Description = "",
+                Icon = Data.Icon,
+                AutoDismiss = true,
+                OutsideClickDismiss = false,
+                FooterButtons = {
+                    Proceed = {
+                        Title = Data.ButtonText,
+                        Variant = Data.ButtonVariant or "Primary",
+                        Order = 1,
+                        Callback = function(CurrentDialog)
+                            Library:SafeCallback(Data.Callback, CurrentDialog, Data)
+                            task.defer(ShowNext)
+                        end,
+                    },
+                },
+            })
+
+            local Image = Data.Image
+            if typeof(Image) == "number" then
+                Image = tostring(Image)
+            end
+            if typeof(Image) == "string" then
+                Image = Image:gsub("^%s+", ""):gsub("%s+$", "")
+                if Image == "" or Image == "rbxasset:0" or Image == "rbxassetid://0" then
+                    Image = nil
+                end
+            end
+
+            if Image then
+                Dialog:AddImage("PopupImage", {
+                    Image = Image,
+                    Height = Data.ImageHeight or 170,
+                    ScaleType = Data.ScaleType or Enum.ScaleType.Fit,
+                    Transparency = Data.ImageTransparency or 0,
+                    BackgroundTransparency = Data.ImageBackgroundTransparency or 0,
+                })
+            end
+
+            if Data.Description ~= "" then
+                local DescriptionLabel = Dialog:AddLabel({
+                    Text = Data.Description,
+                    DoesWrap = true,
+                    Size = Data.DescriptionTextSize or 14,
+                    Visible = true,
+                })
+                if DescriptionLabel and DescriptionLabel.TextLabel then
+                    DescriptionLabel.TextLabel.TextXAlignment = Enum.TextXAlignment.Center
+                end
+            end
+
+            Dialog:Resize()
+        end
+
+        ShowNext()
+    end
+
+    function Library:ClearPopupQueue()
+        Library.PopupQueue = {}
     end
 
     local GuiProperties = { "BackgroundTransparency" }
