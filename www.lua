@@ -15140,10 +15140,20 @@ function Library:CreateWindow(WindowInfo)
                     local selectedValue = isSelected(value)
                     local disabled = isDisabled(value)
 
-                    button.BackgroundTransparency = selectedValue and 0 or 1
-                    button.TextTransparency = disabled and 0.8
-                        or selectedValue and 0
-                        or 0.3
+                    TweenService:Create(
+                        button,
+                        TweenInfo.new(
+                            0.16,
+                            Enum.EasingStyle.Quad,
+                            Enum.EasingDirection.Out
+                        ),
+                        {
+                            BackgroundTransparency = selectedValue and 0 or 1,
+                            TextTransparency = disabled and 0.8
+                                or selectedValue and 0
+                                or 0.3,
+                        }
+                    ):Play()
                 end
             end
 
@@ -15346,54 +15356,12 @@ function Library:CreateWindow(WindowInfo)
             InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
 
             local function addClickFeedback(button, onClick)
-                local busy = false
-
                 button.MouseButton1Click:Connect(function()
-                    if busy or Dropdown.Destroyed or not button.Parent then
+                    if Dropdown.Destroyed or not button.Parent then
                         return
                     end
 
-                    busy = true
-
-                    -- 只改变透明度，不缩放按钮，避免影响滚动区域
-                    local flash = New("Frame", {
-                        BackgroundColor3 = Color3.new(1, 1, 1),
-                        BackgroundTransparency = 0.85,
-                        BorderSizePixel = 0,
-                        Size = UDim2.fromScale(1, 1),
-                        ZIndex = button.ZIndex + 1,
-                        Parent = button,
-                    })
-
-                    New("UICorner", {
-                        CornerRadius = UDim.new(0, 5),
-                        Parent = flash,
-                    })
-
-                    local tween = TweenService:Create(
-                        flash,
-                        TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        { BackgroundTransparency = 1 }
-                    )
-
-                    tween:Play()
-
-                    -- 稍等片刻，让 Expand 面板重建前也能看到反馈
-                    task.delay(0.08, function()
-                        if Dropdown.Destroyed or not button.Parent then
-                            return
-                        end
-
-                        onClick()
-                    end)
-
-                    task.delay(0.15, function()
-                        if flash.Parent then
-                            flash:Destroy()
-                        end
-
-                        busy = false
-                    end)
+                    onClick()
                 end)
             end
             
