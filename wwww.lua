@@ -6544,7 +6544,20 @@ do
             local Width = (Library.WindowContainer.AbsoluteSize.X / Library.DPIScale - 12) / 2 - 7
             return UDim2.fromOffset(math.floor(Width), 0)
         end
+local object = Library.WindowContainer
 
+for i = 1, 6 do
+    if not object then break end
+
+    print(
+        i,
+        object.Name,
+        object.ClassName,
+        object:IsA("GuiObject") and tostring(object.AbsoluteSize) or ""
+    )
+
+    object = object.Parent
+end
         local SettingsMenu; SettingsMenu = Library:AddContextMenu(Gear, GetMenuSize, function()
             return { 0.5, Gear.AbsoluteSize.Y + 1.5 }
         end, 1, function(Active: boolean)
