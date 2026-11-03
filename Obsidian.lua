@@ -14896,7 +14896,7 @@ function Library:CreateWindow(WindowInfo)
             }
 
             local MaxVisible = math.max(1, tonumber(Info.MaxVisibleItems) or 8)
-            local RowHeight = 28
+            local RowHeight = Dropdown.Mode == "Floating" and 21 or 28
 
             -- 外层间距与 Groupbox 一致
             local BoxHolder = New("Frame", {
@@ -14994,10 +14994,25 @@ function Library:CreateWindow(WindowInfo)
                 Parent = Header,
             })
 
-            New("UICorner", {
-                CornerRadius = UDim.new(0, 4),
+            local SelectCorner = New("UICorner", {
+                TopLeftRadius = UDim.new(0, Library.CornerRadius / 2),
+                TopRightRadius = UDim.new(0, Library.CornerRadius / 2),
+                BottomLeftRadius = UDim.new(0, Library.CornerRadius / 2),
+                BottomRightRadius = UDim.new(0, Library.CornerRadius / 2),
                 Parent = SelectBox,
             })
+            local SelectTrigger = New("TextButton", {
+                BackgroundTransparency = 1,
+                AutoButtonColor = false,
+
+                Position = UDim2.fromOffset(8, 23),
+                Size = UDim2.new(1, -16, 0, 21),
+
+                Text = "",
+                ZIndex = 2,
+                Parent = Header,
+            })
+            table.insert(Library.SpecificCorners, SelectCorner)
 
             New("UIStroke", {
                 Color = "OutlineColor",
@@ -15069,25 +15084,58 @@ function Library:CreateWindow(WindowInfo)
 
             if Dropdown.Mode == "Floating" then
                 FloatingMenu = Library:AddContextMenu(
-                    Header,
+                    -- 以选择框本身为定位对象
+                    SelectBox,
+
                     function()
                         return UDim2.fromOffset(
-                            Header.AbsoluteSize.X / (Library.DPIScale or 1),
+                            SelectBox.AbsoluteSize.X / (Library.DPIScale or 1),
                             math.min(#Dropdown.Values, MaxVisible) * RowHeight
                         )
                     end,
+
                     function()
-                        return { 0, Header.AbsoluteSize.Y + 1 }
+                        -- 使用原版 Dropdown 的偏移
+                        return { 0.5, SelectBox.AbsoluteSize.Y + 1.5 }
                     end,
+
                     2,
-                    function(Active)
-                        Dropdown.Opened = Active
-                        Arrow.Rotation = Active and 180 or 0
+
+                    function(active)
+                        Dropdown.Opened = active
+
+                        -- 和你当前 Inline 的方向、高亮保持一致
+                        Arrow.Rotation = active and 180 or 0
+                        Arrow.ImageTransparency = active and 0 or 0.5
+
+                        -- 展开时选择框底部变直，与菜单顶部连接
+                        local bottomRadius = active
+                            and UDim.new(0, 0)
+                            or UDim.new(0, Library.CornerRadius / 2)
+
+                        SelectCorner.BottomLeftRadius = bottomRadius
+                        SelectCorner.BottomRightRadius = bottomRadius
                     end,
+
                     false,
+
+                    -- 菜单顶部直角、底部圆角
                     "bottom",
+
+                    -- 使用库里的 Dropdown 展开/收起动画
                     "Dropdown"
                 )
+
+                FloatingMenu.Menu.ScrollingDirection = Enum.ScrollingDirection.Y
+                FloatingMenu.Menu.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                FloatingMenu.Menu.CanvasSize = UDim2.fromOffset(0, 0)
+                FloatingMenu.Menu.ScrollBarThickness = 2
+
+                FloatingMenu.Menu.ScrollingEnabled = #Dropdown.Values > MaxVisible
+
+                if FloatingMenu.List then
+                    FloatingMenu.List.SortOrder = Enum.SortOrder.LayoutOrder
+                end
             end
             local ExpandOverlay
             local ExpandList
@@ -15336,6 +15384,7 @@ function Library:CreateWindow(WindowInfo)
 
                 -- Hide or show checkboxes, text, and arrows
                 SelectBox.Visible = not enabled
+                SelectTrigger.Visible = not enabled
                 ValueLabel.Visible = not enabled
                 Arrow.Visible = not enabled
 
@@ -15391,13 +15440,22 @@ function Library:CreateWindow(WindowInfo)
                     })
 
                     New("UICorner", {
-                        CornerRadius = UDim.new(0, 5),
+                        CornerRadius = UDim.new(
+                            0,
+                            Dropdown.Mode == "Floating" and 0 or 5
+                        ),
                         Parent = button,
                     })
 
                     New("UIPadding", {
-                        PaddingLeft = UDim.new(0, 12),
-                        PaddingRight = UDim.new(0, 12),
+                        PaddingLeft = UDim.new(
+                            0,
+                            Dropdown.Mode == "Floating" and 7 or 12
+                        ),
+                        PaddingRight = UDim.new(
+                            0,
+                            Dropdown.Mode == "Floating" and 7 or 12
+                        ),
                         Parent = button,
                     })
 
@@ -15421,9 +15479,12 @@ function Library:CreateWindow(WindowInfo)
                 end
 
                 if FloatingMenu then
+                    FloatingMenu.Menu.ScrollingEnabled =
+                        #Dropdown.Values > MaxVisible
+
                     FloatingMenu:SetSize(function()
                         return UDim2.fromOffset(
-                            Header.AbsoluteSize.X / (Library.DPIScale or 1),
+                            SelectBox.AbsoluteSize.X / (Library.DPIScale or 1),
                             math.min(#Dropdown.Values, MaxVisible) * RowHeight
                         )
                     end)
@@ -15731,8 +15792,8 @@ function Library:CreateWindow(WindowInfo)
 
             table.insert(
                 Dropdown.Connections,
-                Header.MouseButton1Click:Connect(function()
-                    if Dropdown.ListOnly then
+                SelectTrigger.MouseButton1Click:Connect(function()
+                    if Dropdown.Destroyed or Dropdown.ListOnly then
                         return
                     end
 
