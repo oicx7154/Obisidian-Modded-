@@ -15938,8 +15938,17 @@ function Library:CreateWindow(WindowInfo)
                 if ExpandOverlay then
                     return true
                 end
+print("MainFrame:", Library.MainFrame)
 
+local ok, err = pcall(function()
+    dropdown:Expand()
+end)
+
+print("Expand 调用成功:", ok)
+print("错误:", err)
+print("展开状态:", dropdown:IsExpanded())
                 if not Library.MainFrame then
+                    
                     return false
                 end
 
