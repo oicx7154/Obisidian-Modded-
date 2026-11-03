@@ -14880,7 +14880,11 @@ function Library:CreateWindow(WindowInfo)
             local Dropdown = {
                 Title = tostring(Info.Title or "选择"),
                 Values = table.clone(Info.Values or {}),
-                Value = nil,
+                Value = Info.Multi == true and {} or nil,
+                Multi = Info.Multi == true,
+                AllowNull = Info.AllowNull == true,
+                DisabledValues = table.clone(Info.DisabledValues or {}),
+                Changed = Info.Changed,
                 Mode = Info.Mode == "Floating" and "Floating" or "Inline",
                 Visible = Info.Visible ~= false,
                 Opened = false,
@@ -15060,7 +15064,7 @@ function Library:CreateWindow(WindowInfo)
                 PaddingBottom = UDim.new(0, 6),
                 Parent = InlineList,
             })
-            -- 悬浮模式复用库已有的 ContextMenu
+            -- Floating mode reuses the existing ContextMenu
             local FloatingMenu
 
             if Dropdown.Mode == "Floating" then
@@ -15085,23 +15089,81 @@ function Library:CreateWindow(WindowInfo)
                     "Dropdown"
                 )
             end
-
+            local ExpandOverlay
+            local ExpandList
+            local ExpandTitle
+            local rebuildExpandList
+            local IsExpanded = false
+            local ExpandScale
+            local ExpandFadeTween
+            local ExpandScaleTween
+            local ExpandFadeConnection
             local Buttons = {}
 
+            local function isSelected(value)
+                if Dropdown.Multi then
+                    return Dropdown.Value[value] == true
+                end
+
+                return Dropdown.Value == value
+            end
+
+            local function isDisabled(value)
+                return table.find(Dropdown.DisabledValues, value) ~= nil
+            end
+
+            local function getActiveValues()
+                local result = {}
+
+                for _, value in ipairs(Dropdown.Values) do
+                    if isSelected(value) then
+                        table.insert(result, value)
+                    end
+                end
+
+                return result
+            end
+
             local function updateDisplay()
-                ValueLabel.Text = Dropdown.Value ~= nil
-                    and tostring(Dropdown.Value)
+                local selected = getActiveValues()
+                local display = {}
+
+                for _, value in ipairs(selected) do
+                    table.insert(display, tostring(value))
+                end
+
+                ValueLabel.Text = #display > 0
+                    and table.concat(display, ", ")
                     or "---"
 
                 for value, button in pairs(Buttons) do
-                    button.BackgroundTransparency =
-                        Dropdown.Value == value and 0 or 1
+                    local selectedValue = isSelected(value)
+                    local disabled = isDisabled(value)
+
+                    TweenService:Create(
+                        button,
+                        TweenInfo.new(
+                            0.16,
+                            Enum.EasingStyle.Quad,
+                            Enum.EasingDirection.Out
+                        ),
+                        {
+                            BackgroundTransparency = selectedValue and 0 or 1,
+                            TextTransparency = disabled and 0.8
+                                or selectedValue and 0
+                                or 0.3,
+                        }
+                    ):Play()
                 end
             end
 
             local function runCallback()
                 if type(Dropdown.Callback) == "function" then
                     Library:SafeCallback(Dropdown.Callback, Dropdown.Value)
+                end
+
+                if type(Dropdown.Changed) == "function" then
+                    Library:SafeCallback(Dropdown.Changed, Dropdown.Value)
                 end
             end
 
@@ -15124,14 +15186,66 @@ function Library:CreateWindow(WindowInfo)
                 local visibleRows = math.min(#Dropdown.Values, MaxVisible)
                 return visibleRows * RowHeight + (visibleRows > 0 and 6 or 0)
             end
+
             local function syncContent()
                 if type(Info.Contents) ~= "table" then
                     return
                 end
 
-                local content = tostring(Info.Contents[Dropdown.Value] or "")
+                local parts = {}
+
+                for _, value in ipairs(getActiveValues()) do
+                    local content = Info.Contents[value]
+
+                    if content ~= nil and tostring(content) ~= "" then
+                        table.insert(parts, tostring(content))
+                    end
+                end
+
+                local separator = Info.ContentSeparator or "\n\n"
+                local content = table.concat(parts, separator)
+
                 ContentLabel.Text = content
                 ContentLabel.Visible = content ~= ""
+            end
+            local function refreshExpanded()
+                if IsExpanded and rebuildExpandList then
+                    rebuildExpandList()
+                end
+            end
+
+            local function toggleValue(value)
+                if Dropdown.Destroyed
+                    or not table.find(Dropdown.Values, value)
+                    or isDisabled(value)
+                then
+                    return
+                end
+
+                if Dropdown.Multi then
+                    local selected = isSelected(value)
+
+                    if selected then
+                        if not Dropdown.AllowNull and #getActiveValues() <= 1 then
+                            return
+                        end
+
+                        Dropdown.Value[value] = nil
+                    else
+                        Dropdown.Value[value] = true
+                    end
+                else
+                    if Dropdown.Value == value and Dropdown.AllowNull then
+                        Dropdown.Value = nil
+                    else
+                        Dropdown.Value = value
+                    end
+                end
+
+                updateDisplay()
+                syncContent()
+                refreshExpanded()
+                runCallback()
             end
             local function setOpen(open)
                 if Dropdown.Destroyed then return end
@@ -15154,7 +15268,7 @@ function Library:CreateWindow(WindowInfo)
                     local tween = TweenService:Create(
                         InlineList,
                         TweenInfo.new(
-                            0.22, -- 动画时长，可以自行调整
+                            0.22, -- You can adjust the animation length yourself
                             Enum.EasingStyle.Quad,
                             Enum.EasingDirection.Out
                         ),
@@ -15197,12 +15311,12 @@ function Library:CreateWindow(WindowInfo)
                 if not ExpandButton then return end
 
                 if Dropdown.ListOnly then
-                    -- 列表模式：放在标题右侧
+                    -- List mode: place it to the right of the title
                     ExpandButton.AnchorPoint = Vector2.new(1, 0)
                     ExpandButton.Position = UDim2.new(1, -10, 0, 4)
                     ExpandButton.Size = UDim2.fromOffset(22, 20)
                 else
-                    -- 普通模式：放在下拉框内，靠近箭头
+                    -- Normal mode: placed inside the dropdown, close to the arrow
                     ExpandButton.AnchorPoint = Vector2.new(1, 0.5)
                     ExpandButton.Position = UDim2.new(1, -30, 0, 33.5)
                     ExpandButton.Size = UDim2.fromOffset(16, 16)
@@ -15214,24 +15328,24 @@ function Library:CreateWindow(WindowInfo)
                 enabled = enabled == true
 
                 if enabled and self.Mode ~= "Inline" then
-                    warn("SetListOnly 只支持 Inline 模式")
+                    warn("SetListOnly only supports Inline mode")
                     return
                 end
 
                 self.ListOnly = enabled
 
-                -- 隐藏或恢复选中框、文字和箭头
+                -- Hide or show checkboxes, text, and arrows
                 SelectBox.Visible = not enabled
                 ValueLabel.Visible = not enabled
                 Arrow.Visible = not enabled
 
-                -- 隐藏选中框后缩短标题区域
+                -- Shorten the title area after hiding the selection box
                 Header.Size = UDim2.new(1, 0, 0, enabled and 28 or 48)
                 updateExpandButtonPosition()
-                -- 列表模式保持展开；恢复普通模式时先收起
+                -- Keep the list mode expanded; collapse it first when switching back to normal mode
                 setOpen(enabled)
             end
-            -- 重建选项时停止旧动画，并根据当前状态更新高度
+            -- Stop the old animation when rebuilding options, and update the height based on the current state
             stopInlineTween()
 
             InlineList.Size = UDim2.new(
@@ -15241,10 +15355,21 @@ function Library:CreateWindow(WindowInfo)
 
             InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
 
+            local function addClickFeedback(button, onClick)
+                button.MouseButton1Click:Connect(function()
+                    if Dropdown.Destroyed or not button.Parent then
+                        return
+                    end
+
+                    onClick()
+                end)
+            end
+            
             local function buildValues()
                 for _, button in pairs(Buttons) do
                     button:Destroy()
                 end
+
                 table.clear(Buttons)
 
                 local list = Dropdown.Mode == "Inline"
@@ -15260,6 +15385,7 @@ function Library:CreateWindow(WindowInfo)
                         LayoutOrder = index,
                         Text = tostring(value),
                         TextSize = 14,
+                        TextTruncate = Enum.TextTruncate.AtEnd,
                         TextXAlignment = Enum.TextXAlignment.Left,
                         Parent = list,
                     })
@@ -15268,34 +15394,25 @@ function Library:CreateWindow(WindowInfo)
                         CornerRadius = UDim.new(0, 5),
                         Parent = button,
                     })
-                    
+
                     New("UIPadding", {
                         PaddingLeft = UDim.new(0, 12),
                         PaddingRight = UDim.new(0, 12),
                         Parent = button,
                     })
 
-                    button.MouseButton1Click:Connect(function()
-                        if Dropdown.Destroyed then return end
-
-                        Dropdown.Value = value
-                        if Dropdown.Mode == "Inline" then
-                            stopInlineTween()
-
-                            InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
-
-                            InlineList.Size = UDim2.new(
-                                1, 0,
-                                0, Dropdown.Opened and getInlineHeight() or 0
-                            )
-
-                            InlineList.Visible = Dropdown.Opened
+                    addClickFeedback(button, function()
+                        if Dropdown.Destroyed or isDisabled(value) then
+                            return
                         end
-                        updateDisplay()
-                        syncContent()
-                        runCallback()
 
-                        if not Dropdown.ListOnly and Info.CloseOnSelect ~= false then
+                        toggleValue(value)
+
+                        if not Dropdown.Destroyed
+                            and not Dropdown.Multi
+                            and not Dropdown.ListOnly
+                            and Info.CloseOnSelect ~= false
+                        then
                             setOpen(false)
                         end
                     end)
@@ -15312,18 +15429,19 @@ function Library:CreateWindow(WindowInfo)
                     end)
                 end
 
+                if Dropdown.Mode == "Inline" then
+                    stopInlineTween()
+
+                    InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
+                    InlineList.Size = UDim2.new(
+                        1, 0,
+                        0, Dropdown.Opened and getInlineHeight() or 0
+                    )
+                    InlineList.Visible = Dropdown.Opened
+                end
+
                 updateDisplay()
-            end
-            
-            local ExpandOverlay
-            local ExpandList
-            local ExpandTitle
-            local rebuildExpandList
-            local IsExpanded = false
-            local ExpandScale
-            local ExpandFadeTween
-            local ExpandScaleTween
-            local ExpandFadeConnection
+            end 
             
             local ExpandTweenInfo = TweenInfo.new(
                 0.2,
@@ -15347,13 +15465,74 @@ function Library:CreateWindow(WindowInfo)
                     ExpandScaleTween = nil
                 end
             end
+
+            local function normalizeMultiValue(input)
+                local result = {}
+
+                if type(input) ~= "table" then
+                    return result
+                end
+
+                for key, item in pairs(input) do
+                    local value
+
+                    if type(item) == "boolean" then
+                        if item then
+                            value = key
+                        end
+                    else
+                        value = item
+                    end
+
+                    if value ~= nil and table.find(Dropdown.Values, value) then
+                        result[value] = true
+                    end
+                end
+
+                return result
+            end
+
+            local function ensureSelection()
+                if Dropdown.AllowNull then
+                    return
+                end
+
+                if #getActiveValues() > 0 then
+                    return
+                end
+
+                for _, value in ipairs(Dropdown.Values) do
+                    if not isDisabled(value) then
+                        if Dropdown.Multi then
+                            Dropdown.Value[value] = true
+                        else
+                            Dropdown.Value = value
+                        end
+
+                        return
+                    end
+                end
+            end
+
             function Dropdown:SetValue(value)
                 if self.Destroyed then return end
-                if not table.find(self.Values, value) then return end
 
-                self.Value = value
+                if self.Multi then
+                    self.Value = normalizeMultiValue(value)
+                else
+                    if value == nil and self.AllowNull then
+                        self.Value = nil
+                    elseif table.find(self.Values, value) then
+                        self.Value = value
+                    else
+                        return
+                    end
+                end
+
+                ensureSelection()
                 updateDisplay()
                 syncContent()
+                refreshExpanded()
                 runCallback()
             end
 
@@ -15363,14 +15542,111 @@ function Library:CreateWindow(WindowInfo)
 
                 self.Values = table.clone(values)
 
-                if not table.find(self.Values, self.Value) then
-                    self.Value = self.Values[1]
+                if self.Multi then
+                    self.Value = normalizeMultiValue(self.Value)
+                elseif not table.find(self.Values, self.Value) then
+                    self.Value = nil
                 end
 
+                ensureSelection()
                 buildValues()
                 syncContent()
+                refreshExpanded()
+            end
+            function Dropdown:AddValues(values)
+                if self.Destroyed then return end
+
+                local result = table.clone(self.Values)
+
+                if type(values) == "table" then
+                    for _, value in ipairs(values) do
+                        if not table.find(result, value) then
+                            table.insert(result, value)
+                        end
+                    end
+                else
+                    if values ~= nil and not table.find(result, values) then
+                        table.insert(result, values)
+                    end
+                end
+
+                self:SetValues(result)
             end
 
+            function Dropdown:GetActiveValues(returnCount)
+                local values = getActiveValues()
+
+                if returnCount == true then
+                    return #values
+                end
+
+                return values
+            end
+
+            function Dropdown:OnChanged(callback)
+                if self.Destroyed then return end
+                self.Changed = callback
+            end
+
+            function Dropdown:SelectAll()
+                if self.Destroyed or not self.Multi then return end
+
+                for _, value in ipairs(self.Values) do
+                    if not isDisabled(value) then
+                        self.Value[value] = true
+                    end
+                end
+
+                updateDisplay()
+                syncContent()
+                refreshExpanded()
+                runCallback()
+            end
+
+            function Dropdown:DeselectAll()
+                if self.Destroyed or not self.Multi then return end
+
+                -- 保留禁用选项的已有状态；只清除可操作项
+                for _, value in ipairs(self.Values) do
+                    if not isDisabled(value) then
+                        self.Value[value] = nil
+                    end
+                end
+
+                ensureSelection()
+                updateDisplay()
+                syncContent()
+                refreshExpanded()
+                runCallback()
+            end
+
+            function Dropdown:SetDisabledValues(values)
+                if self.Destroyed then return end
+                assert(type(values) == "table", "DisabledValues 必须是数组")
+
+                self.DisabledValues = table.clone(values)
+
+                updateDisplay()
+                refreshExpanded()
+            end
+
+            function Dropdown:AddDisabledValues(values)
+                if self.Destroyed then return end
+
+                local result = table.clone(self.DisabledValues)
+
+                if type(values) == "table" then
+                    for _, value in ipairs(values) do
+                        if not table.find(result, value) then
+                            table.insert(result, value)
+                        end
+                    end
+                elseif values ~= nil and not table.find(result, values) then
+                    table.insert(result, values)
+                end
+
+                self:SetDisabledValues(result)
+            end
             function Dropdown:SetTitle(title)
                 if self.Destroyed then return end
 
@@ -15391,7 +15667,12 @@ function Library:CreateWindow(WindowInfo)
             end
 
             function Dropdown:SetOpen(open)
-                
+                if self.Destroyed then return end
+
+                if self.ListOnly and open ~= true then
+                    return
+                end
+
                 setOpen(open)
             end
 
@@ -15459,13 +15740,27 @@ function Library:CreateWindow(WindowInfo)
                 end)
             )
             -- Default 可以是数组索引，也可以是选项值
-            if type(Info.Default) == "number" then
-                Dropdown.Value = Dropdown.Values[Info.Default]
-            elseif table.find(Dropdown.Values, Info.Default) then
-                Dropdown.Value = Info.Default
+            if Dropdown.Multi then
+                if type(Info.Default) == "table" then
+                    Dropdown.Value = normalizeMultiValue(Info.Default)
+                elseif type(Info.Default) == "number" then
+                    local value = Dropdown.Values[Info.Default]
+
+                    if value ~= nil then
+                        Dropdown.Value[value] = true
+                    end
+                elseif table.find(Dropdown.Values, Info.Default) then
+                    Dropdown.Value[Info.Default] = true
+                end
             else
-                Dropdown.Value = Dropdown.Values[1]
+                if type(Info.Default) == "number" then
+                    Dropdown.Value = Dropdown.Values[Info.Default]
+                elseif table.find(Dropdown.Values, Info.Default) then
+                    Dropdown.Value = Info.Default
+                end
             end
+
+            ensureSelection()
 
             buildValues()
             syncContent()
@@ -15530,7 +15825,6 @@ function Library:CreateWindow(WindowInfo)
                 end
 
                 if not Library.MainFrame then
-                    warn("无法打开 Expand")
                     return false
                 end
 
@@ -15686,7 +15980,6 @@ function Library:CreateWindow(WindowInfo)
                     return
                 end
 
-                -- 只删除旧选项，保留 UIGridLayout 和 UIPadding
                 for _, child in ipairs(ExpandList:GetChildren()) do
                     if child:IsA("TextButton") then
                         child:Destroy()
@@ -15694,18 +15987,20 @@ function Library:CreateWindow(WindowInfo)
                 end
 
                 for index, value in ipairs(Dropdown.Values) do
-                    local selected = Dropdown.Value == value
+                    local selected = isSelected(value)
+                    local disabled = isDisabled(value)
 
                     local button = New("TextButton", {
                         BackgroundColor3 = "MainColor",
                         BackgroundTransparency = selected and 0 or 1,
                         AutoButtonColor = false,
-
                         LayoutOrder = index,
 
                         Text = tostring(value),
                         TextSize = 14,
-                        TextTransparency = selected and 0 or 0.4,
+                        TextTransparency = disabled and 0.8
+                            or selected and 0
+                            or 0.4,
                         TextTruncate = Enum.TextTruncate.AtEnd,
                         TextXAlignment = Enum.TextXAlignment.Left,
 
@@ -15731,7 +16026,7 @@ function Library:CreateWindow(WindowInfo)
                     })
 
                     button.MouseEnter:Connect(function()
-                        if Dropdown.Value == value then
+                        if isDisabled(value) or isSelected(value) then
                             return
                         end
 
@@ -15743,7 +16038,7 @@ function Library:CreateWindow(WindowInfo)
                     end)
 
                     button.MouseLeave:Connect(function()
-                        if Dropdown.Value == value then
+                        if isDisabled(value) or isSelected(value) then
                             return
                         end
 
@@ -15754,13 +16049,17 @@ function Library:CreateWindow(WindowInfo)
                         ):Play()
                     end)
 
-                    button.MouseButton1Click:Connect(function()
-                        if Dropdown.Destroyed then
+                    addClickFeedback(button, function()
+                        if Dropdown.Destroyed or isDisabled(value) then
                             return
                         end
 
-                        Dropdown:SetValue(value)
-                        Dropdown:Collapse()
+                        toggleValue(value)
+
+                        -- 多选时保持面板打开；单选时关闭
+                        if not Dropdown.Destroyed and not Dropdown.Multi then
+                            Dropdown:Collapse()
+                        end
                     end)
                 end
             end
