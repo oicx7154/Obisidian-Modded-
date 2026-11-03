@@ -9458,13 +9458,47 @@ do
         local DragInitialValues = {}
         local DragInputEndedConn = nil
         local DragInputChangedConn = nil
+        local function IsValueSelected(Value)
+            if Dropdown.Multi then
+                return Dropdown.Value[Value] == true
+            end
+
+            return Dropdown.Value == Value
+        end
+
         local function RefreshButtons()
-            for _, Table in Buttons do
-                Table:UpdateButton()
+            -- 新版普通列表使用 Pool，不再使用旧版 Buttons
+            for _, Row in Pool do
+                Row:UpdateButton()
             end
-            for _, Table in ExpandedButtons do
-                Table:UpdateButton()
+
+            for _, Entry in ExpandedButtons do
+                Entry:UpdateButton()
             end
+        end
+
+        local function ToggleValue(Value)
+            local Selected = IsValueSelected(Value)
+            local Try = not Selected
+
+            -- 不允许清空时，保留最后一个选中项
+            if Dropdown:GetActiveValues(true) == 1
+                and not Try
+                and not Info.AllowNull
+            then
+                return
+            end
+
+            if Dropdown.Multi then
+                Dropdown.Value[Value] = Try and true or nil
+            else
+                Dropdown.Value = Try and Value or nil
+            end
+
+            RefreshButtons()
+            Dropdown:Display()
+            Library:UpdateDependencyBoxes()
+            Dropdown:RunChanged()
         end
         local function RecomputeFilteredEntries()
             local Values = Dropdown.Values
@@ -10140,7 +10174,7 @@ do
                 return
             end
 
-            local Parent = Library.MainFrame
+            local Parent = Library.WindowContainer
             if not Parent then
                 return
             end
@@ -10169,7 +10203,7 @@ do
                 AutoButtonColor = false,
                 BackgroundColor3 = "BackgroundColor",
                 Position = UDim2.fromScale(0.5, 0.5),
-                Size = UDim2.new(0.7, 0, 0.72, 0),
+                Size = UDim2.fromScale(1, 1),
                 Text = "",
                 ZIndex = 8001,
                 Parent = ExpandOverlay,
@@ -10418,7 +10452,7 @@ do
 
             for _, Value in Dropdown.Values do
                 local FormattedValue = tostring(Info.FormatListValue and Info.FormatListValue(Value) or Value)
-                if Search ~= "" and not TextMatches(FormattedValue, Search) then
+                if Search ~= "" and not string.find(string.lower(FormattedValue),string.lower(Search),1,true) then
                     continue
                 end
 
@@ -15938,11 +15972,9 @@ function Library:CreateWindow(WindowInfo)
                 if ExpandOverlay then
                     return true
                 end
-                local ExpandParent = Library.Overlay
+                local ExpandParent = Library.WindowContainer
 
                 if not ExpandParent then
-    warn("ParagraphDropdown: 找不到 Library.Overlay，无法创建 Expand 面板")
-
                     return false
                 end
 
@@ -15961,7 +15993,7 @@ function Library:CreateWindow(WindowInfo)
                     AutoButtonColor = false,
                     BackgroundColor3 = "BackgroundColor",
                     Position = UDim2.fromScale(0.5, 0.5),
-                    Size = UDim2.fromScale(0.7, 0.72),
+                    Size = UDim2.fromScale(1, 1),
                     Text = "",
                     ZIndex = 8001,
                     Parent = ExpandOverlay,
