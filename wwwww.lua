@@ -15938,10 +15938,11 @@ function Library:CreateWindow(WindowInfo)
                 if ExpandOverlay then
                     return true
                 end
-                local ExpandParent = Library.WindowContainer
+                local ExpandParent = Library.Overlay
 
                 if not ExpandParent then
-                    warn("ParagraphDropdown: 找不到 Library.WindowContainer，无法创建 Expand 面板")
+    warn("ParagraphDropdown: 找不到 Library.Overlay，无法创建 Expand 面板")
+
                     return false
                 end
 
@@ -15955,14 +15956,6 @@ function Library:CreateWindow(WindowInfo)
                     ZIndex = 8000,
                     Parent = ExpandParent,
                 })
-local ok, err = xpcall(function()
-    dropdown:Expand()
-end, debug.traceback)
-
-print("调用成功:", ok)
-if not ok then
-    warn(err)
-end
                 local Panel = New("TextButton", {
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     AutoButtonColor = false,
