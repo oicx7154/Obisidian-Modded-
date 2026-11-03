@@ -10174,7 +10174,7 @@ do
                 return
             end
 
-            local Parent = Library.WindowContainer
+            local Parent = Library.WindowContainer and Library.WindowContainer.Parent
             if not Parent then
                 return
             end
@@ -10196,20 +10196,7 @@ do
                     Parent = ExpandOverlay,
                 })
             )
-local object = Library.WindowContainer
 
-for i = 1, 6 do
-    if not object then break end
-
-    print(
-        i,
-        object.Name,
-        object.ClassName,
-        object:IsA("GuiObject") and tostring(object.AbsoluteSize) or ""
-    )
-
-    object = object.Parent
-end
             --// A TextButton so clicks on the panel do not fall through and close it
             ExpandFrame = New("TextButton", {
                 AnchorPoint = Vector2.new(0.5, 0.5),
@@ -15986,7 +15973,7 @@ function Library:CreateWindow(WindowInfo)
                 if ExpandOverlay then
                     return true
                 end
-                local ExpandParent = Library.WindowContainer
+                local ExpandParent = Library.WindowContainer and Library.WindowContainer.Parent
 
                 if not ExpandParent then
                     return false
