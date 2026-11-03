@@ -6,6 +6,7 @@
 
 - 新增 **Paragraph（段落）**。
 - 新增 **ParagraphDropdown（段落下拉框）**。
+- 新增 **HoldButton（长按按钮）**。
 
 ---
 # 新增功能
@@ -195,3 +196,70 @@ dropdown:Expand()
 
 > [!NOTE]
 > 设置了 `Contents` 后，切换选项会自动更新段落内容。如果需要完全自行控制内容，可以不设置 `Contents`，并在回调中调用 `SetContent()`。
+
+---
+
+## HoldButton（长按按钮）
+
+添加到 Groupbox 中，需要持续按住指定时间才会执行回调。
+
+长按时会显示进度条；提前松开或将鼠标移出按钮会取消进度。
+
+### 基本用法
+
+```lua
+Groupbox:AddHoldButton({
+    Text = "长按执行",
+    HoldTime = 2,
+
+    Callback = function()
+        print("长按完成")
+    end,
+})
+```
+
+### 简写方式
+
+```lua
+Groupbox:AddHoldButton(
+    "长按确认",
+    function()
+        print("操作已确认")
+    end,
+    1.5
+)
+```
+
+三个参数依次为：按钮文字、回调函数、长按时间（秒）。
+
+### 配置项
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `Text` | `string` | `""` | 按钮显示的文字 |
+| `Callback` | `function` | 空函数 | 长按完成后调用 |
+| `Func` | `function` | 空函数 | 回调函数；同时设置时优先于 `Callback` |
+| `HoldTime` | `number` | `1` | 长按时间，单位为秒 |
+| `Time` | `number` | `1` | `HoldTime` 的别名 |
+| `Disabled` | `boolean` | `false` | 是否禁用按钮 |
+| `Risky` | `boolean` | `false` | 风险标记 |
+| `Tooltip` | `string` | `nil` | 提示文字 |
+| `DisabledTooltip` | `string` | `nil` | 禁用时的提示文字 |
+
+> [!NOTE]
+> 当前实现只保存 `Risky`、`Tooltip` 和 `DisabledTooltip`，尚未根据它们创建提示框或改变按钮外观。
+
+### 返回对象
+
+```lua
+local holdButton = Groupbox:AddHoldButton({
+    Text = "长按执行",
+    HoldTime = 2,
+
+    Callback = function()
+        print("执行成功")
+    end,
+})
+```
+
+返回对象包含 `Base`、`Stroke` 和 `FillBar` 等属性。当前实现尚未提供 `SetDisabled`、`SetVisible` 或 `Destroy` 等方法。
