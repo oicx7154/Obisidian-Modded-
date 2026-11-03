@@ -79,7 +79,7 @@ local dropdown = Tab:AddParagraphDropdown({
 | `Side` | `string` | 位置，可用 `"Left"`、`"Right"` 或 `"Full"` |
 | `Mode` | `string` | 列表模式：`"Inline"` 或 `"Floating"` |
 | `Values` | `table` | 可选项数组，选项值应保持唯一 |
-| `Default` | `number` / 选项值 / `table` | 默认选择；数字按 `Values` 索引解释，多选时可传表 |
+| `Default` | `number` / `选项值` / `table` | 默认选择；数字按 `Values` 索引解释，多选时可传表 |
 | `Multi` | `boolean` | 是否允许多选 |
 | `AllowNull` | `boolean` | 是否允许不选择任何选项 |
 | `DisabledValues` | `table` | 禁止点击的选项 |
