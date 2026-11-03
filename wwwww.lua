@@ -557,7 +557,7 @@ local Templates = {
         --// Opens the values in a large panel over the window
         Expandable = true,
         ExpandColumns = 2,
-        
+
         Callback = function() end,
         Changed = function() end,
 
@@ -9195,6 +9195,49 @@ do
             Size = UDim2.fromOffset(16, 16),
             Parent = DisplayContainer,
         })
+        local ExpandButton
+        local ExpandIconImage
+        if Info.Expandable ~= false then
+            local ExpandIcon = Library:GetIcon("maximize-2")
+
+            ExpandButton = New("TextButton", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                BackgroundTransparency = 1,
+                Position = UDim2.new(1, -18, 0.5, 0),
+                Size = UDim2.fromOffset(16, 16),
+                Text = "",
+                ZIndex = 3,
+                Parent = DisplayContainer,
+            })
+            ExpandIconImage = New("ImageLabel", {
+                Image = ExpandIcon and ExpandIcon.Url or "",
+                ImageColor3 = "FontColor",
+                ImageRectOffset = ExpandIcon and ExpandIcon.ImageRectOffset or Vector2.zero,
+                ImageRectSize = ExpandIcon and ExpandIcon.ImageRectSize or Vector2.zero,
+                ImageTransparency = 0.5,
+                ScaleType = Enum.ScaleType.Fit,
+                Size = UDim2.fromScale(1, 1),
+                ZIndex = 3,
+                Parent = ExpandButton,
+            })
+
+            ExpandButton.MouseEnter:Connect(function()
+                if Dropdown.Disabled then
+                    return
+                end
+
+                TweenService:Create(ExpandIconImage, Library.TweenInfo, { ImageTransparency = 0 }):Play()
+            end)
+            ExpandButton.MouseLeave:Connect(function()
+                if Dropdown.Disabled then
+                    return
+                end
+
+                TweenService:Create(ExpandIconImage, Library.TweenInfo, { ImageTransparency = 0.5 }):Play()
+            end)
+
+            Library:AddTooltip("Expand", nil, ExpandButton)
+        end
 
         local SearchBox
         if Info.Searchable then
