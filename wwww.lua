@@ -14,7 +14,7 @@ local TweenService: TweenService = cloneref(game:GetService("TweenService"))
 local getgenv = getgenv or function()
     return shared
 end
-local setclipboard = setclipboard or nil or toclipboard
+local setclipboard = setclipboard or nil
 
 local protectgui = protectgui or (syn and syn.protect_gui) or function() end
 local gethui = gethui or function()
@@ -13048,17 +13048,14 @@ function Library:CreateWindow(WindowInfo)
             local Text = tostring(Info.Text or "")
             --// Copyable is opt in per segment, and impossible without a clipboard
             local Copyable = Info.Copyable == true and setclipboard ~= nil
-print("[Footer] 添加片段:", Info.Text)
-print("[Footer] 请求复制:", Info.Copyable)
-print("[Footer] SetClipboard 类型:", typeof(SetClipboard))
-print("[Footer] 复制功能启用:", Copyable)
+
             local Label = New("TextLabel", {
                 Active = Copyable,
                 AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1,
                 Size = UDim2.new(0, 0, 1, 0),
                 Text = Text,
-                TextColor3 = Copyable and "BlueColor" or "FontColor",
+                TextColor3 = Copyable and Color3.fromRGB(0, 153, 255),
                 TextSize = 14,
                 TextTransparency = Copyable and 0 or 0.5,
                 Parent = FooterHolder,
@@ -13111,10 +13108,8 @@ print("[Footer] 复制功能启用:", Copyable)
             local ResetThread
             
             local function Copy()
-                print("[Footer] 点击已触发")
                 local Success, Err = pcall(setclipboard, CopyValue)
                 if not Success then
-                    warn("[Footer] 复制失败:", Err)
                     return
                 end
 
