@@ -84,7 +84,7 @@ return function(Tab)
         ListOnly = true,
         Expandable = true,
         Multi = false,
-        AllowNull = true,
+        AllowNull = false,
         Values = authors,
         Default = 1,
 
