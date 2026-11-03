@@ -14,7 +14,7 @@ local TweenService: TweenService = cloneref(game:GetService("TweenService"))
 local getgenv = getgenv or function()
     return shared
 end
-local setclipboard = setclipboard or nil
+local setclipboard = setclipboard or nil or toclipboard
 
 local protectgui = protectgui or (syn and syn.protect_gui) or function() end
 local gethui = gethui or function()
@@ -13095,7 +13095,7 @@ function Library:CreateWindow(WindowInfo)
 
             local CopyImage = New("ImageLabel", {
                 Image = CopyIcon and CopyIcon.Url or "",
-                ImageColor3 = "BlueColor",
+                ImageColor3 = Color3.fromRGB(0, 153, 255),
                 ImageRectOffset = CopyIcon and CopyIcon.ImageRectOffset or Vector2.zero,
                 ImageRectSize = CopyIcon and CopyIcon.ImageRectSize or Vector2.zero,
                 ScaleType = Enum.ScaleType.Fit,
@@ -13108,7 +13108,7 @@ function Library:CreateWindow(WindowInfo)
             local ResetThread
             
             local function Copy()
-                local Success, Err = pcall(setclipboard, CopyValue)
+                local Success =pcall(setclipboard, CopyValue)
                 if not Success then
                     return
                 end
