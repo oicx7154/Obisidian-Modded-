@@ -64,17 +64,6 @@ return function(Tab)
         RichText = false,
     })
 
-    local tips = Tab.support:AddParagraph({
-        Title = "提示",
-        Content = "⏺️脚本名字\n"
-            .. "🟢新增功能/脚本\n"
-            .. "🔴删除功能/脚本\n"
-            .. "🟡修复\n"
-            .. "🟣优化",
-        Side = "Right",
-        RichText = false,
-    })
-    
     local dropdown = Tab.support:AddParagraphDropdown({
         Title = "选择作者",
         Side = "Right",
@@ -95,6 +84,33 @@ return function(Tab)
             end
         end,
     })
+    local tips = Tab.support:AddParagraph({
+        Title = "提示",
+        Content = "剑客付费版目前支持\n"..
+"🟢=正常使用\n"..
+"🟡=正在维护/部分功能失效\n"..
+"🔴=不能使用\n",,
+"🟣=将会更新(等1到5天)\n"..
+"🟤=短暂下架/之后会更\n"..
+"🔵=有活动/正常使用\n"..
+"⛔=建议拿小号使用\n"..
+"⚫=存在风险问题不建议使用\n"..
+"🛜=要网络好\n"..
+"🌀=要传送进游戏内(对局)\n"..
+"💰=定制脚本\n"..
+"🔒=需要特殊卡密\n"..
+"💸=永久专属\n"..
+"🤖=有ai成分\n"..
 
+"游戏可使用设备\n"..
+"仅电脑=💻\n"..
+"仅手机=📱\n"..
+"电脑或手机=💻📱\n"..
+"部分功能手机用不了=📵\n"..
+"部分功能电脑用不了=🚫\n",
+        Side = "Right",
+        RichText = false,
+    })
+    
     return dropdown, paragraph, tips
 end
