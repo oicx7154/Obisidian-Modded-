@@ -15,6 +15,7 @@ local getgenv = getgenv or function()
     return shared
 end
 local setclipboard = setclipboard or nil
+local SetClipboard = setclipboard
 local protectgui = protectgui or (syn and syn.protect_gui) or function() end
 local gethui = gethui or function()
     return CoreGui
@@ -13047,10 +13048,7 @@ function Library:CreateWindow(WindowInfo)
             local Text = tostring(Info.Text or "")
             --// Copyable is opt in per segment, and impossible without a clipboard
             local Copyable = Info.Copyable == true and SetClipboard ~= nil
-            print("[Footer] 添加片段:", Info.Text)
-            print("[Footer] 请求复制:", Info.Copyable)
-            print("[Footer] SetClipboard 类型:", typeof(SetClipboard))
-            print("[Footer] 复制功能启用:", Copyable)
+
             local Label = New("TextLabel", {
                 Active = Copyable,
                 AutomaticSize = Enum.AutomaticSize.X,
