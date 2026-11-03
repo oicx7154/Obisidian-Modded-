@@ -83,7 +83,7 @@ return function(Tab)
         ExpandColumns = 2,
         ListOnly = true,
         Expandable = true,
-        Multi = true,
+        Multi = false,
         AllowNull = true,
         Values = authors,
         Default = 1,
