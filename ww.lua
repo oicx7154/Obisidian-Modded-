@@ -15344,59 +15344,59 @@ function Library:CreateWindow(WindowInfo)
             )
 
             InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
-            local function addClickFeedback(button, onClick)
-                local scale = New("UIScale", {
-                    Scale = 1,
-                    Parent = button,
-                })
 
+            local function addClickFeedback(button, onClick)
                 local busy = false
 
                 button.MouseButton1Click:Connect(function()
-                    if busy or Dropdown.Destroyed then
+                    if busy or Dropdown.Destroyed or not button.Parent then
                         return
                     end
 
                     busy = true
 
-                    local pressTween = TweenService:Create(
-                        scale,
-                        TweenInfo.new(
-                            0.08,
-                            Enum.EasingStyle.Quad,
-                            Enum.EasingDirection.Out
-                        ),
-                        { Scale = 0.96 }
+                    -- 只改变透明度，不缩放按钮，避免影响滚动区域
+                    local flash = New("Frame", {
+                        BackgroundColor3 = Color3.new(1, 1, 1),
+                        BackgroundTransparency = 0.85,
+                        BorderSizePixel = 0,
+                        Size = UDim2.fromScale(1, 1),
+                        ZIndex = button.ZIndex + 1,
+                        Parent = button,
+                    })
+
+                    New("UICorner", {
+                        CornerRadius = UDim.new(0, 5),
+                        Parent = flash,
+                    })
+
+                    local tween = TweenService:Create(
+                        flash,
+                        TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        { BackgroundTransparency = 1 }
                     )
 
-                    pressTween:Play()
+                    tween:Play()
 
+                    -- 稍等片刻，让 Expand 面板重建前也能看到反馈
                     task.delay(0.08, function()
                         if Dropdown.Destroyed or not button.Parent then
                             return
                         end
 
-                        -- 先恢复尺寸，再执行选择逻辑
-                        local releaseTween = TweenService:Create(
-                            scale,
-                            TweenInfo.new(
-                                0.12,
-                                Enum.EasingStyle.Back,
-                                Enum.EasingDirection.Out
-                            ),
-                            { Scale = 1 }
-                        )
-
-                        releaseTween:Play()
                         onClick()
+                    end)
 
-                        task.delay(0.12, function()
-                            busy = false
-                        end)
+                    task.delay(0.15, function()
+                        if flash.Parent then
+                            flash:Destroy()
+                        end
+
+                        busy = false
                     end)
                 end)
             end
-
+            
             local function buildValues()
                 for _, button in pairs(Buttons) do
                     button:Destroy()
