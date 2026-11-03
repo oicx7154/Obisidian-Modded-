@@ -15344,6 +15344,58 @@ function Library:CreateWindow(WindowInfo)
             )
 
             InlineList.ScrollingEnabled = #Dropdown.Values > MaxVisible
+            local function addClickFeedback(button, onClick)
+                local scale = New("UIScale", {
+                    Scale = 1,
+                    Parent = button,
+                })
+
+                local busy = false
+
+                button.MouseButton1Click:Connect(function()
+                    if busy or Dropdown.Destroyed then
+                        return
+                    end
+
+                    busy = true
+
+                    local pressTween = TweenService:Create(
+                        scale,
+                        TweenInfo.new(
+                            0.08,
+                            Enum.EasingStyle.Quad,
+                            Enum.EasingDirection.Out
+                        ),
+                        { Scale = 0.96 }
+                    )
+
+                    pressTween:Play()
+
+                    task.delay(0.08, function()
+                        if Dropdown.Destroyed or not button.Parent then
+                            return
+                        end
+
+                        -- 先恢复尺寸，再执行选择逻辑
+                        local releaseTween = TweenService:Create(
+                            scale,
+                            TweenInfo.new(
+                                0.12,
+                                Enum.EasingStyle.Back,
+                                Enum.EasingDirection.Out
+                            ),
+                            { Scale = 1 }
+                        )
+
+                        releaseTween:Play()
+                        onClick()
+
+                        task.delay(0.12, function()
+                            busy = false
+                        end)
+                    end)
+                end)
+            end
 
             local function buildValues()
                 for _, button in pairs(Buttons) do
@@ -15381,7 +15433,7 @@ function Library:CreateWindow(WindowInfo)
                         Parent = button,
                     })
 
-                    button.MouseButton1Click:Connect(function()
+                    addClickFeedback(button, function()
                         if Dropdown.Destroyed or isDisabled(value) then
                             return
                         end
@@ -15421,8 +15473,7 @@ function Library:CreateWindow(WindowInfo)
                 end
 
                 updateDisplay()
-            end
-            
+            end 
             
             local ExpandTweenInfo = TweenInfo.new(
                 0.2,
@@ -16030,7 +16081,7 @@ function Library:CreateWindow(WindowInfo)
                         ):Play()
                     end)
 
-                    button.MouseButton1Click:Connect(function()
+                    addClickFeedback(button, function()
                         if Dropdown.Destroyed or isDisabled(value) then
                             return
                         end
