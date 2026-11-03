@@ -13105,9 +13105,12 @@ function Library:CreateWindow(WindowInfo)
             Library:AddTooltip("复制到剪贴板", nil, CopyButton)
 
             local ResetThread
+            
             local function Copy()
-                local Success = pcall(SetClipboard, CopyValue)
+                print("[Footer] 点击已触发")
+                local Success, Err = pcall(SetClipboard, CopyValue)
                 if not Success then
+                    warn("[Footer] 复制失败:", Err)
                     return
                 end
 
