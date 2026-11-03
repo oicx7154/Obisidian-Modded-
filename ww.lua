@@ -7016,7 +7016,7 @@ do
 
         return Label
     end
-    --[[function Funcs:AddParagraph(Info)
+    function Funcs:AddParagraph(Info)
         if self.Destroyed then
             return nil
         end
@@ -7160,7 +7160,7 @@ do
         Groupbox:Resize()
 
         return Paragraph
-    end]]
+    end
 
     function Funcs:AddHoldButton(...)
         if self.Destroyed then return nil end
@@ -12405,7 +12405,7 @@ function Library:CreateWindow(WindowInfo)
         FooterLabel = New("TextLabel", {
             BackgroundTransparency = 1,
             Size = UDim2.fromScale(1, 1),
-            Text = WindowInfo.Footer,
+            Text = typeof(WindowInfo.Footer) == "string" and WindowInfo.Footer or "",
             TextSize = 14,
             TextTransparency = 0.5,
             Parent = BottomBar,
@@ -14188,7 +14188,7 @@ function Library:CreateWindow(WindowInfo)
 
             return Groupbox
         end
-        --[[function Tab:AddParagraph(Info)
+        function Tab:AddParagraph(Info)
             Info = Info or {}
 
             local Owner = self
@@ -15719,7 +15719,7 @@ function Library:CreateWindow(WindowInfo)
                 end)
             )
             return Dropdown
-        end]]
+        end
         --// Deprecated - Use Tab:AddGroupbox instead.
         function Tab:AddLeftGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
             return Tab:AddGroupbox({ Side = 1, Name = Name, IconName = IconName, Visible = Visible, Collapsed = Collapsed, DisableCollapsing = DisableCollapsing })
