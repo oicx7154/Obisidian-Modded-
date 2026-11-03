@@ -14994,10 +14994,15 @@ function Library:CreateWindow(WindowInfo)
                 Parent = Header,
             })
 
-            New("UICorner", {
-                CornerRadius = UDim.new(0, 4),
+            local SelectCorner = New("UICorner", {
+                TopLeftRadius = UDim.new(0, Library.CornerRadius / 2),
+                TopRightRadius = UDim.new(0, Library.CornerRadius / 2),
+                BottomLeftRadius = UDim.new(0, Library.CornerRadius / 2),
+                BottomRightRadius = UDim.new(0, Library.CornerRadius / 2),
                 Parent = SelectBox,
             })
+
+            table.insert(Library.SpecificCorners, SelectCorner)
 
             New("UIStroke", {
                 Color = "OutlineColor",
@@ -15069,30 +15074,54 @@ function Library:CreateWindow(WindowInfo)
 
             if Dropdown.Mode == "Floating" then
                 FloatingMenu = Library:AddContextMenu(
+                    -- 以选择框本身为定位对象
                     SelectBox,
+
                     function()
                         return UDim2.fromOffset(
                             SelectBox.AbsoluteSize.X / (Library.DPIScale or 1),
                             math.min(#Dropdown.Values, MaxVisible) * RowHeight
                         )
                     end,
+
                     function()
-                        -- 跟原版 Dropdown 使用相同的定位方式
+                        -- 使用原版 Dropdown 的偏移
                         return { 0.5, SelectBox.AbsoluteSize.Y + 1.5 }
                     end,
+
                     2,
+
                     function(active)
                         Dropdown.Opened = active
 
-                        -- 保持与你当前 Inline 模式相同的箭头方向
+                        -- 和你当前 Inline 的方向、高亮保持一致
                         Arrow.Rotation = active and 180 or 0
                         Arrow.ImageTransparency = active and 0 or 0.5
+
+                        -- 展开时选择框底部变直，与菜单顶部连接
+                        local bottomRadius = active
+                            and UDim.new(0, 0)
+                            or UDim.new(0, Library.CornerRadius / 2)
+
+                        SelectCorner.BottomLeftRadius = bottomRadius
+                        SelectCorner.BottomRightRadius = bottomRadius
                     end,
 
                     false,
+
+                    -- 菜单顶部直角、底部圆角
                     "bottom",
+
+                    -- 使用库里的 Dropdown 展开/收起动画
                     "Dropdown"
                 )
+
+                FloatingMenu.Menu.ScrollingDirection = Enum.ScrollingDirection.Y
+                FloatingMenu.Menu.ScrollingEnabled = #Dropdown.Values > MaxVisible
+
+                if FloatingMenu.List then
+                    FloatingMenu.List.SortOrder = Enum.SortOrder.LayoutOrder
+                end
             end
             local ExpandOverlay
             local ExpandList
@@ -15435,6 +15464,9 @@ function Library:CreateWindow(WindowInfo)
                 end
 
                 if FloatingMenu then
+                    FloatingMenu.Menu.ScrollingEnabled =
+                        #Dropdown.Values > MaxVisible
+
                     FloatingMenu:SetSize(function()
                         return UDim2.fromOffset(
                             SelectBox.AbsoluteSize.X / (Library.DPIScale or 1),
