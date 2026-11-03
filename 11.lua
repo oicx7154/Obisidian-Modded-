@@ -13030,7 +13030,8 @@ function Library:CreateWindow(WindowInfo)
         FooterLabel = New("TextLabel", {
             BackgroundTransparency = 1,
             Size = UDim2.fromScale(1, 1),
-            Text = typeof(WindowInfo.Footer) == "string" and WindowInfo.Footer or "",
+            Text = "",
+            Visible = false,
             TextSize = 14,
             TextTransparency = 0.5,
             Parent = BottomBar,
@@ -13048,6 +13049,7 @@ function Library:CreateWindow(WindowInfo)
             local Copyable = Info.Copyable == true and SetClipboard ~= nil
 
             local Label = New("TextLabel", {
+                Active = Copyable,
                 AutomaticSize = Enum.AutomaticSize.X,
                 BackgroundTransparency = 1,
                 Size = UDim2.new(0, 0, 1, 0),
@@ -17933,7 +17935,7 @@ function Library:CreateWindow(WindowInfo)
     function Library:ClearPopupQueue()
         Library.PopupQueue = {}
     end
-    
+
     local GuiProperties = { "BackgroundTransparency" }
     local ImageProperties = { "BackgroundTransparency", "ImageTransparency" }
     local TextProperties = { "BackgroundTransparency", "TextTransparency" }
