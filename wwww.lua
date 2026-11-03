@@ -15117,6 +15117,10 @@ function Library:CreateWindow(WindowInfo)
                 )
 
                 FloatingMenu.Menu.ScrollingDirection = Enum.ScrollingDirection.Y
+                FloatingMenu.Menu.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                FloatingMenu.Menu.CanvasSize = UDim2.fromOffset(0, 0)
+                FloatingMenu.Menu.ScrollBarThickness = 2
+
                 FloatingMenu.Menu.ScrollingEnabled = #Dropdown.Values > MaxVisible
 
                 if FloatingMenu.List then
