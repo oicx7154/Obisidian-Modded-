@@ -16314,6 +16314,139 @@ function Library:CreateWindow(WindowInfo)
         function Tab:AddRightGroupbox(Name, IconName, Visible, Collapsed, DisableCollapsing)
             return Tab:AddGroupbox({ Side = 2, Name = Name, IconName = IconName, Visible = Visible, Collapsed = Collapsed, DisableCollapsing = DisableCollapsing })
         end
+        local function ResizeSidebarList(Animate: boolean?)
+            if not SidebarList then
+                return
+            end
+
+            --// Collapsed while the sidebar is compact: there is no room for labels
+            local Open = Expanded and not IsCompact
+            local Target = Open and SidebarListHeight() or 0
+            local Animated = Animate and Library.Animations and Library.Animations.SidebarSubTabs ~= false
+
+            --// A toggle mid animation would otherwise leave two tweens fighting
+            if SidebarListTween then
+                StopTween(SidebarListTween, true)
+                SidebarListTween = nil
+            end
+
+            --// Stays visible for the whole collapse: hiding it up front would play the
+            --// tween on a frame nobody can see, which reads as the list snapping shut
+            if Target > 0 then
+                SidebarList.Visible = true
+            end
+
+            if Animated then
+                SidebarListTween = TweenService:Create(SidebarList, Library.GroupboxTweenInfo, {
+                    Size = UDim2.new(1, 0, 0, Target),
+                })
+
+                if Target == 0 then
+                    local Connection
+                    Connection = SidebarListTween.Completed:Connect(function(State: Enum.PlaybackState)
+                        Connection:Disconnect()
+
+                        --// Cancelled means something re-opened it on the way down
+                        if State == Enum.PlaybackState.Completed and SidebarList.Size.Y.Offset == 0 then
+                            SidebarList.Visible = false
+                        end
+                    end)
+                end
+
+                SidebarListTween:Play()
+            else
+                SidebarList.Size = UDim2.new(1, 0, 0, Target)
+                SidebarList.Visible = Target > 0
+            end
+
+            if TabChevron then
+                local Rotation = Open and 180 or 0
+
+                if Animated then
+                    TweenService:Create(TabChevron, Library.RotatingChevronTweenInfo, {
+                        Rotation = Rotation,
+                    }):Play()
+                else
+                    TabChevron.Rotation = Rotation
+                end
+            end
+        end
+        local function EnsureSidebarList()
+            if SidebarList then
+                return
+            end
+
+            SidebarList = New("Frame", {
+                BackgroundTransparency = 1,
+                ClipsDescendants = true,
+                LayoutOrder = 1,
+                Size = UDim2.new(1, 0, 0, 0),
+                Visible = false,
+                Parent = TabHolder,
+            })
+            SidebarListLayout = New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = SidebarList,
+            })
+
+            --// Chevron doubles as a hit target, so it can expand without switching tabs
+            local ChevronIcon = Library:GetIcon("chevron-down")
+            TabChevron = New("ImageButton", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                BackgroundTransparency = 1,
+                Image = ChevronIcon and ChevronIcon.Url or "",
+                ImageColor3 = "FontColor",
+                ImageRectOffset = ChevronIcon and ChevronIcon.ImageRectOffset or Vector2.zero,
+                ImageRectSize = ChevronIcon and ChevronIcon.ImageRectSize or Vector2.zero,
+                ImageTransparency = 0.5,
+                Position = UDim2.new(1, 0, 0.5, 0),
+                Size = UDim2.fromOffset(16, 16),
+                Visible = not IsCompact,
+                ZIndex = 3,
+                Parent = TabButton,
+            })
+
+            --// Give the chevron room so a long tab name cannot run under it
+            TabLabel.Size = UDim2.new(1, -30 - 18, 1, 0)
+
+            TabChevron.MouseButton1Click:Connect(function()
+                Tab:SetExpanded(not Expanded)
+            end)
+
+            if TabButtonInfo then
+                TabButtonInfo.Chevron = TabChevron
+                TabButtonInfo.SidebarList = SidebarList
+            end
+
+            --// The first tab is shown before it has any sub tabs, so if this is the
+            --// open tab the list is born expanded rather than waiting for a switch
+            if Library.ActiveTab == Tab then
+                Expanded = true
+            end
+
+            --// The list height follows its contents while open
+            Library:GiveSignal(SidebarListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                if Expanded then
+                    ResizeSidebarList(false)
+                end
+            end))
+        end
+        function Tab:IsExpanded(): boolean
+            return Expanded
+        end
+
+        function Tab:SetExpanded(Value: boolean?)
+            if Value == nil then
+                Value = not Expanded
+            end
+            Expanded = Value and true or false
+
+            ResizeSidebarList(true)
+        end
+
+        function Tab:ToggleExpanded()
+            Tab:SetExpanded(not Expanded)
+        end
 
         function Tab:Hover(Hovering)
             if Library.ActiveTab == Tab then
