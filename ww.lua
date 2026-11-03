@@ -14896,7 +14896,7 @@ function Library:CreateWindow(WindowInfo)
             }
 
             local MaxVisible = math.max(1, tonumber(Info.MaxVisibleItems) or 8)
-            local RowHeight = 28
+            local RowHeight = Dropdown.Mode == "Floating" and 21 or 28
 
             -- 外层间距与 Groupbox 一致
             local BoxHolder = New("Frame", {
@@ -15396,13 +15396,22 @@ function Library:CreateWindow(WindowInfo)
                     })
 
                     New("UICorner", {
-                        CornerRadius = UDim.new(0, 5),
+                        CornerRadius = UDim.new(
+                            0,
+                            Dropdown.Mode == "Floating" and 0 or 5
+                        ),
                         Parent = button,
                     })
 
                     New("UIPadding", {
-                        PaddingLeft = UDim.new(0, 12),
-                        PaddingRight = UDim.new(0, 12),
+                        PaddingLeft = UDim.new(
+                            0,
+                            Dropdown.Mode == "Floating" and 7 or 12
+                        ),
+                        PaddingRight = UDim.new(
+                            0,
+                            Dropdown.Mode == "Floating" and 7 or 12
+                        ),
                         Parent = button,
                     })
 
