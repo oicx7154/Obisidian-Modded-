@@ -46,7 +46,7 @@ paragraph:SetContent("新的段落内容")
 
 ```lua
 local dropdown = Tab:AddParagraphDropdown({
-    Title = "选择版本",
+    Title = "选择",
     Side = "Right",
     Mode = "Inline",
 
@@ -99,7 +99,7 @@ local dropdown = Tab:AddParagraphDropdown({
 
 ```lua
 local dropdown = Tab:AddParagraphDropdown({
-    Title = "选择作者",
+    Title = "选择",
     Side = "Right",
     Mode = "Inline",
 
