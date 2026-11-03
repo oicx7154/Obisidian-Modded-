@@ -15001,7 +15001,17 @@ function Library:CreateWindow(WindowInfo)
                 BottomRightRadius = UDim.new(0, Library.CornerRadius / 2),
                 Parent = SelectBox,
             })
+            local SelectTrigger = New("TextButton", {
+                BackgroundTransparency = 1,
+                AutoButtonColor = false,
 
+                Position = UDim2.fromOffset(8, 23),
+                Size = UDim2.new(1, -16, 0, 21),
+
+                Text = "",
+                ZIndex = 2,
+                Parent = Header,
+            })
             table.insert(Library.SpecificCorners, SelectCorner)
 
             New("UIStroke", {
@@ -15374,6 +15384,7 @@ function Library:CreateWindow(WindowInfo)
 
                 -- Hide or show checkboxes, text, and arrows
                 SelectBox.Visible = not enabled
+                SelectTrigger.Visible = not enabled
                 ValueLabel.Visible = not enabled
                 Arrow.Visible = not enabled
 
@@ -15781,8 +15792,8 @@ function Library:CreateWindow(WindowInfo)
 
             table.insert(
                 Dropdown.Connections,
-                Header.MouseButton1Click:Connect(function()
-                    if Dropdown.ListOnly then
+                SelectTrigger.MouseButton1Click:Connect(function()
+                    if Dropdown.Destroyed or Dropdown.ListOnly then
                         return
                     end
 
