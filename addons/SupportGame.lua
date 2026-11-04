@@ -108,6 +108,7 @@ return function(Tab)
 "部分功能电脑用不了=🚫\n",
         Side = "Right",
         RichText = false,
+        Collapsible = true,
     })
     
     return dropdown, paragraph, tips
