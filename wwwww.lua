@@ -4999,72 +4999,149 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
     Info = Info or {}
     assert(typeof(Info) == "table", "CodeBlock Info must be a table")
 
-    local CardInfo = {
+    local ParentContainer
+
+    if IsTab then
+        if Info.Side == "Full" then
+            ParentContainer = Owner.FullParagraphContainer
+            assert(ParentContainer, "CodeBlock: Full container is not available")
+        else
+            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+            ParentContainer = Owner.Sides[Side]
+        end
+    else
+        ParentContainer = Owner.Container
+    end
+
+    assert(ParentContainer, "CodeBlock: parent container is not available")
+
+    local TextSize = tonumber(Info.TextSize) or 14
+    local MinHeight = tonumber(Info.MinHeight) or 60
+    local MaxHeight = tonumber(Info.MaxHeight) or 240
+
+    TextSize = math.clamp(TextSize, 8, 32)
+    MinHeight = math.max(24, MinHeight)
+    MaxHeight = math.max(MinHeight, MaxHeight)
+
+    local Card = {
+        Type = "CodeBlock",
         Title = tostring(Info.Title or "Code"),
-        Content = tostring(Info.Code or ""),
-        Side = Info.Side,
-        LayoutOrder = Info.LayoutOrder,
-        Visible = Info.Visible,
-        TitleSize = Info.TitleSize,
-        ContentSize = Info.TextSize or 14,
-        RichText = false,
-        Collapsible = false,
+        Code = tostring(Info.Code or ""),
+        Visible = Info.Visible ~= false,
+        Destroyed = false,
+        SyntaxHighlight = Info.SyntaxHighlight ~= false,
+        Connections = {},
     }
 
-    local Card = CreateCustomCard(
-        Owner,
-        CardInfo,
-        "Paragraph",
-        IsTab,
-        TabCornerRadius
-    )
-
-    if not Card then
-        return nil
+    local function Connect(Signal, Callback)
+        local Connection = Signal:Connect(Callback)
+        table.insert(Card.Connections, Connection)
+        return Connection
     end
 
-    Card.Type = "CodeBlock"
-    Card.Code = Card.Content
-    Card.ContentLabel.Font = Enum.Font.Code
-
-    local Highlighter = Info.SyntaxHighlight ~= false and GetLuauHighlighter() or nil
-
-    Card.SyntaxHighlight = Highlighter ~= nil
-    Card.ContentLabel.RichText = Card.SyntaxHighlight
-
-    local function RefreshCodeDisplay()
-        if Card.Destroyed then
-            return
+    local function ResizeOwner()
+        if not IsTab and not Owner.Destroyed and Owner.Resize then
+            Owner:Resize()
         end
-
-        if Card.SyntaxHighlight and Highlighter then
-            local Success, Result = pcall(Highlighter, Card.Code)
-
-            if Success and type(Result) == "string" then
-                Card.ContentLabel.RichText = true
-                Card.ContentLabel.Text = Result
-                return
-            end
-
-            warn("CodeBlock: syntax highlighting failed; displaying plain text.")
-        end
-
-        Card.ContentLabel.RichText = false
-        Card.ContentLabel.Text = Card.Code
     end
 
-    RefreshCodeDisplay()
+    local BoxHolder
+
+    if IsTab then
+        BoxHolder = New("Frame", {
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 0),
+            Visible = Card.Visible,
+            LayoutOrder = Info.LayoutOrder or 0,
+            Parent = ParentContainer,
+        })
+
+        New("UIListLayout", {
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = BoxHolder,
+        })
+
+        New("UIPadding", {
+            PaddingTop = UDim.new(0, 4),
+            PaddingBottom = UDim.new(0, 4),
+            Parent = BoxHolder,
+        })
+    end
+
+    local Holder = New("Frame", {
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundColor3 = IsTab and "BackgroundColor" or "MainColor",
+        Size = UDim2.fromScale(1, 0),
+        Visible = IsTab and true or Card.Visible,
+        LayoutOrder = IsTab and 0 or (Info.LayoutOrder or 0),
+        Parent = IsTab and BoxHolder or ParentContainer,
+    })
+
+    local HolderCorner = New("UICorner", {
+        CornerRadius = UDim.new(
+            0,
+            IsTab and (TabCornerRadius or Library.CornerRadius)
+                or (Library.CornerRadius / 2)
+        ),
+        Parent = Holder,
+    })
+
+    if IsTab then
+        table.insert(Library.Corners, HolderCorner)
+        Library:AddOutline(Holder)
+    else
+        table.insert(Library.SpecificCorners, HolderCorner)
+
+        New("UIStroke", {
+            Color = "OutlineColor",
+            Parent = Holder,
+        })
+    end
+
+    New("UIPadding", {
+        PaddingTop = UDim.new(0, 10),
+        PaddingBottom = UDim.new(0, 10),
+        PaddingLeft = UDim.new(0, 10),
+        PaddingRight = UDim.new(0, 10),
+        Parent = Holder,
+    })
+
+    New("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 8),
+        Parent = Holder,
+    })
+
+    local Header = New("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 24),
+        LayoutOrder = 1,
+        Parent = Holder,
+    })
+
+    local TitleLabel = New("TextLabel", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, -68, 1, 0),
+        Text = Card.Title,
+        TextColor3 = "FontColor",
+        TextSize = tonumber(Info.TitleSize) or 15,
+        Font = Enum.Font.GothamBold,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = Header,
+    })
 
     local CopyButton = New("TextButton", {
-        AnchorPoint = Vector2.new(1, 0),
+        AnchorPoint = Vector2.new(1, 0.5),
         BackgroundColor3 = "MainColor",
         AutoButtonColor = false,
-        Position = UDim2.new(1, 0, 0, 0),
-        Size = UDim2.fromOffset(54, 20),
+        Position = UDim2.fromScale(1, 0.5),
+        Size = UDim2.fromOffset(58, 24),
         Text = "Copy",
+        TextColor3 = "FontColor",
         TextSize = 13,
-        ZIndex = Card.Header.ZIndex + 1,
-        Parent = Card.Header,
+        Parent = Header,
     })
 
     local CopyCorner = New("UICorner", {
@@ -5078,30 +5155,202 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         Parent = CopyButton,
     })
 
-    Card.CopyButton = CopyButton
-    Card.Header.Visible = true
-    Card.TitleLabel.Size = UDim2.new(1, -62, 0, 0)
+    local CodeArea = New("ScrollingFrame", {
+        BackgroundColor3 = "BackgroundColor",
+        BorderSizePixel = 0,
+        AutomaticCanvasSize = Enum.AutomaticSize.None,
+        CanvasSize = UDim2.fromOffset(0, 0),
+        Size = UDim2.new(1, 0, 0, MinHeight),
+        LayoutOrder = 2,
+        ScrollBarImageColor3 = "OutlineColor",
+        ScrollBarImageTransparency = 0.3,
+        ScrollBarThickness = 3,
+        ScrollingDirection = Enum.ScrollingDirection.XY,
+        Parent = Holder,
+    })
 
-    local Minimum = Card.Header:FindFirstChildOfClass("UISizeConstraint")
-    if Minimum then
-        Minimum.MinSize = Vector2.new(0, 20)
+    local CodeCorner = New("UICorner", {
+        CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+        Parent = CodeArea,
+    })
+    table.insert(Library.SpecificCorners, CodeCorner)
+
+    New("UIStroke", {
+        Color = "OutlineColor",
+        Parent = CodeArea,
+    })
+
+    local LineNumbers = New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(8, 8),
+        Size = UDim2.fromOffset(20, 0),
+        Text = "",
+        TextColor3 = "FontColor",
+        TextTransparency = 0.55,
+        TextSize = TextSize,
+        Font = Enum.Font.Code,
+        TextWrapped = false,
+        TextXAlignment = Enum.TextXAlignment.Right,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        Parent = CodeArea,
+    })
+
+    local CodeLabel = New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(38, 8),
+        Size = UDim2.fromOffset(0, 0),
+        Text = "",
+        TextColor3 = "FontColor",
+        TextSize = TextSize,
+        Font = Enum.Font.Code,
+        RichText = false,
+        TextWrapped = false,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        Parent = CodeArea,
+    })
+
+    Card.BoxHolder = BoxHolder
+    Card.Holder = Holder
+    Card.Header = Header
+    Card.TitleLabel = TitleLabel
+    Card.CopyButton = CopyButton
+    Card.CodeArea = CodeArea
+    Card.CodeLabel = CodeLabel
+    Card.LineNumbers = LineNumbers
+
+    local Highlighter
+    if Card.SyntaxHighlight then
+        Highlighter = GetLuauHighlighter()
     end
 
-    local OriginalSetTitle = Card.SetTitle
-    local OriginalSetContent = Card.SetContent
-    local ResetId = 0
+    local function GetScale()
+        local Scale = Library.DPIScale or 1
+        return Scale > 0 and Scale or 1
+    end
+
+    local function RefreshDisplay()
+        if Card.Destroyed then
+            return
+        end
+
+        if Card.SyntaxHighlight and Highlighter then
+            local Success, Result = pcall(Highlighter, Card.Code)
+
+            if Success and typeof(Result) == "string" then
+                CodeLabel.RichText = true
+                CodeLabel.Text = Result
+                return
+            end
+
+            warn("CodeBlock: syntax highlighting failed; using plain text.")
+        end
+
+        CodeLabel.RichText = false
+        CodeLabel.Text = Card.Code
+    end
+
+    local function UpdateSize()
+        if Card.Destroyed or Owner.Destroyed then
+            return
+        end
+
+        local Lines = {}
+        local LongestWidth = 0
+
+        -- Append a newline so empty and trailing lines are counted.
+        for Line in (Card.Code .. "\n"):gmatch("(.-)\n") do
+            table.insert(Lines, tostring(#Lines + 1))
+
+            if Line ~= "" then
+                local Success, Width = pcall(function()
+                    return Library:GetTextBounds(
+                        Line,
+                        CodeLabel.FontFace,
+                        TextSize,
+                        100000
+                    )
+                end)
+
+                if Success and typeof(Width) == "number" then
+                    LongestWidth = math.max(LongestWidth, Width)
+                end
+            end
+        end
+
+        LineNumbers.Text = table.concat(Lines, "\n")
+
+        local NumberWidth = 20
+        local Success, Width = pcall(function()
+            return Library:GetTextBounds(
+                tostring(#Lines),
+                LineNumbers.FontFace,
+                TextSize,
+                100000
+            )
+        end)
+
+        if Success and typeof(Width) == "number" then
+            NumberWidth = math.max(20, math.ceil(Width))
+        end
+
+        local Scale = GetScale()
+        local TextHeight = math.max(
+            CodeLabel.TextBounds.Y / Scale,
+            LineNumbers.TextBounds.Y / Scale,
+            TextSize
+        )
+
+        -- TextBounds may update after the current layout pass.
+        TextHeight = math.ceil(TextHeight)
+
+        local CodeX = 8 + NumberWidth + 12
+        local ContentWidth = math.ceil(CodeX + LongestWidth + 12)
+        local ContentHeight = TextHeight + 16
+
+        LineNumbers.Size = UDim2.fromOffset(NumberWidth, TextHeight)
+        CodeLabel.Position = UDim2.fromOffset(CodeX, 8)
+        CodeLabel.Size = UDim2.fromOffset(
+            math.max(1, math.ceil(LongestWidth) + 2),
+            TextHeight
+        )
+
+        CodeArea.CanvasSize = UDim2.fromOffset(ContentWidth, ContentHeight)
+        CodeArea.Size = UDim2.new(
+            1,
+            0,
+            0,
+            math.clamp(ContentHeight, MinHeight, MaxHeight)
+        )
+
+        ResizeOwner()
+    end
+
+    local UpdateQueued = false
+
+    local function QueueUpdate()
+        if UpdateQueued or Card.Destroyed then
+            return
+        end
+
+        UpdateQueued = true
+
+        task.defer(function()
+            UpdateQueued = false
+
+            if not Card.Destroyed and not Owner.Destroyed then
+                UpdateSize()
+            end
+        end)
+    end
 
     function Card:SetTitle(Title)
         if self.Destroyed then
             return
         end
 
-        OriginalSetTitle(self, Title)
-        self.Header.Visible = true
-
-        if Minimum then
-            Minimum.MinSize = Vector2.new(0, 20)
-        end
+        self.Title = tostring(Title or "")
+        TitleLabel.Text = self.Title
     end
 
     function Card:SetCode(Code)
@@ -5110,24 +5359,10 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         end
 
         self.Code = tostring(Code or "")
-        OriginalSetContent(self, self.Code)
-        RefreshCodeDisplay()
+        RefreshDisplay()
+        QueueUpdate()
     end
 
-    function Card:SetSyntaxHighlight(Enabled)
-        if self.Destroyed then
-            return
-        end
-
-        if Enabled == true and not Highlighter then
-            Highlighter = GetLuauHighlighter()
-        end
-
-        self.SyntaxHighlight = Enabled == true and Highlighter ~= nil
-        RefreshCodeDisplay()
-    end
-
-    -- Keep SetContent compatible with the underlying paragraph.
     function Card:SetContent(Content)
         self:SetCode(Content)
     end
@@ -5138,6 +5373,38 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         end
 
         return self.Code
+    end
+
+    function Card:SetSyntaxHighlight(Enabled)
+        if self.Destroyed then
+            return
+        end
+
+        self.SyntaxHighlight = Enabled == true
+
+        if self.SyntaxHighlight and not Highlighter then
+            Highlighter = GetLuauHighlighter()
+        end
+
+        RefreshDisplay()
+        QueueUpdate()
+    end
+
+    function Card:SetVisible(Visible)
+        if self.Destroyed then
+            return
+        end
+
+        self.Visible = Visible == true
+
+        if IsTab then
+            BoxHolder.Visible = self.Visible
+        else
+            Holder.Visible = self.Visible
+        end
+
+        ResizeOwner()
+        QueueUpdate()
     end
 
     function Card:Copy()
@@ -5155,6 +5422,7 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         end
 
         local Success = pcall(setclipboard, self.Code)
+
         if not Success then
             Library:Notify({
                 Title = "CodeBlock",
@@ -5166,7 +5434,9 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         return Success
     end
 
-    table.insert(Card.Connections, CopyButton.MouseButton1Click:Connect(function()
+    local ResetId = 0
+
+    Connect(CopyButton.MouseButton1Click, function()
         if Card.Destroyed then
             return
         end
@@ -5178,13 +5448,60 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         CopyButton.Text = Success and "Copied" or "Failed"
 
         task.delay(1.5, function()
-            if Card.Destroyed or CurrentId ~= ResetId then
+            if Card.Destroyed or Owner.Destroyed or CurrentId ~= ResetId then
                 return
             end
 
             CopyButton.Text = "Copy"
         end)
-    end))
+    end)
+
+    Connect(CodeLabel:GetPropertyChangedSignal("TextBounds"), QueueUpdate)
+    Connect(LineNumbers:GetPropertyChangedSignal("TextBounds"), QueueUpdate)
+    Connect(CodeArea:GetPropertyChangedSignal("AbsoluteSize"), QueueUpdate)
+
+    if not IsTab then
+        Connect(Holder:GetPropertyChangedSignal("AbsoluteSize"), function()
+            if not Card.Destroyed then
+                ResizeOwner()
+            end
+        end)
+    end
+
+    function Card:Destroy()
+        if self.Destroyed then
+            return
+        end
+
+        self.Destroyed = true
+
+        for _, Connection in ipairs(self.Connections) do
+            Connection:Disconnect()
+        end
+        table.clear(self.Connections)
+
+        if IsTab then
+            BoxHolder:Destroy()
+        else
+            Holder:Destroy()
+
+            if not Owner.Destroyed and Owner.Elements then
+                local Index = table.find(Owner.Elements, self)
+                if Index then
+                    table.remove(Owner.Elements, Index)
+                end
+            end
+
+            ResizeOwner()
+        end
+    end
+
+    if not IsTab then
+        table.insert(Owner.Elements, Card)
+    end
+
+    RefreshDisplay()
+    QueueUpdate()
 
     return Card
 end
