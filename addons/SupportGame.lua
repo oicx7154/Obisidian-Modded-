@@ -105,7 +105,7 @@ return function(Tab)
 "仅手机=📱\n"..
 "电脑或手机=💻📱\n"..
 "部分功能手机用不了=📵\n"..
-"部分功能电脑用不了=🚫\n",
+"部分功能电脑用不了=🚫",
         Side = "Right",
         RichText = false,
         Collapsible = true,
