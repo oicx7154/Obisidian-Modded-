@@ -4508,7 +4508,10 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
             end
 
             local Gap = Header.Visible and 5 or 0
-            return math.max(0, ContentLabel.AbsoluteSize.Y / Scale) + Gap
+
+            local TextHeight = ContentLabel.TextBounds.Y / Scale
+
+            return math.ceil(math.max(0, TextHeight)) + Gap
         end
 
         local function UpdateContentPosition()
@@ -4643,7 +4646,7 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
         end
 
         -- 文本换行、DPI 或容器宽度变化后重新计算内容高度。
-        Connect(ContentLabel:GetPropertyChangedSignal("AbsoluteSize"), function()
+        Connect(ContentLabel:GetPropertyChangedSignal("TextBounds"), function()
             if Card.Destroyed or Card.Collapsed then
                 return
             end
