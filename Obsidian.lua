@@ -8279,7 +8279,7 @@ do
 
             local HttpRequest = GetRequestFunction()
             if not HttpRequest then
-                Notify("当前环境不支持 request，无法提交反馈。")
+                Notify("当前环境不支持 request,无法提交反馈。")
                 return false
             end
 
@@ -8287,7 +8287,6 @@ do
             if Info.IncludePlayer ~= false then
                 local Player = Players.LocalPlayer
                 if not Player then
-                    Notify("无法获取玩家信息，请稍后重试。")
                     return false
                 end
 
@@ -8496,11 +8495,10 @@ do
         end
 
         Feedback.SubmitButton = Groupbox:AddButton({
-            Text = Info.ButtonText
-                or (
+            Text = Info.ButtonText or (
                     Info.IncludePlayer == false
                     and "提交反馈"
-                    or "提交反馈"
+                    or "提交反馈(上传用户名和ID)"
                 ),
 
             Func = function()
