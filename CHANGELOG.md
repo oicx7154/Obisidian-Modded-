@@ -39,15 +39,16 @@
 
 ### CodeBlock
 
-代码块支持 Luau 语法高亮和复制原始代码，可添加到 Tab 或 Groupbox。
-
-#### 添加到 Tab
+代码块支持 Luau 语法高亮、行号、复制和折叠，可添加到 Tab 或 Groupbox。
 
 ```lua
 local CodeBlock = Tab:AddCodeBlock({
     Title = "Luau 示例",
-    Side = "Left", -- Left / Right
-    SyntaxHighlight = true, -- 默认开启
+    Side = "Full",
+    SyntaxHighlight = true,
+    DefaultCollapsed = false,
+    MinHeight = 60,
+    MaxHeight = 240,
 
     Code = [[
 -- 输出欢迎信息
@@ -57,30 +58,35 @@ print(message)
 })
 ```
 
-#### 添加到 Groupbox
+也可以添加到 Groupbox：
 
 ```lua
-local CodeBlock = Groupbox:AddCodeBlock({
+Groupbox:AddCodeBlock({
     Title = "脚本示例",
-
     Code = [[
-local value = 123
-print(value)
+print("Hello World")
     ]],
 })
 ```
+
+代码区域支持横向和纵向滚动，行号会随代码一起滚动。
 
 #### 方法
 
 ```lua
 CodeBlock:SetTitle("新的标题")
 CodeBlock:SetCode('print("新的代码")')
-CodeBlock:SetContent('print("新的代码")') -- SetCode 的兼容方法
-
+CodeBlock:SetContent('print("新的代码")')
 print(CodeBlock:GetCode())
 
 CodeBlock:SetSyntaxHighlight(false)
 CodeBlock:SetSyntaxHighlight(true)
+
+CodeBlock:Collapse()
+CodeBlock:Expand()
+CodeBlock:ToggleCollapsed()
+CodeBlock:SetCollapsed(true)
+print(CodeBlock:IsCollapsed())
 
 CodeBlock:Copy()
 CodeBlock:SetVisible(false)
