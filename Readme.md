@@ -40,9 +40,8 @@
 - `SetVisible(boolean)`：设置卡片是否可见。
 - `Destroy()`：销毁卡片。
 
-## [更新日期：2026/11/4]
+## [更新日期：2026/11/3]
 
-- Paragraph 折叠动画及 InfoCard 布局仍需在实际运行环境中测试。
 - 将 UI 库更新至最新版 Obsidian UI。
 - 将自定义的 **Paragraph（段落）** 和 **ParagraphDropdown（段落下拉框）** 移植到新版。
 - 适配 ParagraphDropdown 的 Floating 悬浮列表布局和滚动。
