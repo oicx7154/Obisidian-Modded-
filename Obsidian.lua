@@ -7710,22 +7710,15 @@ do
 
         return Label
     end
+
     function Funcs:AddParagraph(Info)
-        return CreateCustomCard(
-            self,
-            Info,
-            "Paragraph",
-            false
-        )
+        return CreateCustomCard(self,Info,"Paragraph",false)
     end
+
     function Funcs:AddInfoCard(Info)
-        return CreateCustomCard(
-            self,
-            Info,
-            "InfoCard",
-            false
-        )
+        return CreateCustomCard(self,Info,"InfoCard",false)
     end
+
     function Funcs:AddHoldButton(...)
         if self.Destroyed then return nil end
 
@@ -7871,6 +7864,481 @@ do
         HoldButton.FillBar = FillBar
 
         return HoldButton
+    end
+
+    function Funcs:AddFeedback(Info)
+        if self.Destroyed then
+            return nil
+        end
+
+        Info = Info or {}
+
+        assert(typeof(Info) == "table", "AddFeedback: Info 必须是 table")
+
+        local Groupbox = self
+        local HttpService = game:GetService("HttpService")
+        local Players = game:GetService("Players")
+
+        local Cooldown = Info.Cooldown
+
+        if Cooldown == nil then
+            Cooldown = 60
+        end
+
+        assert(typeof(Cooldown) == "number"and Cooldown >= 0 and Cooldown < math.huge,"AddFeedback: Cooldown 必须是大于或等于 0 的有限数字")
+
+        assert(typeof(Info.Fields) == "table" and #Info.Fields > 0,"AddFeedback: Fields 必须是非空数组")
+
+        local FieldConfigs = {}
+        local UsedIds = {}
+
+        for Index, Field in ipairs(Info.Fields) do
+            assert(typeof(Field) == "table",("AddFeedback: Fields[%d] 必须是 table"):format(Index))
+
+            assert(typeof(Field.Id) == "string" and Field.Id ~= "",("AddFeedback: Fields[%d].Id 必须是非空字符串"):format(Index))
+
+            assert( not UsedIds[Field.Id],("AddFeedback: 字段 Id 重复：%s"):format(Field.Id))
+
+            if Field.MaxBytes ~= nil then
+                assert(typeof(Field.MaxBytes) == "number"and Field.MaxBytes >= 1 and Field.MaxBytes <= 1024,("AddFeedback: Fields[%d].MaxBytes 必须在 1 到 1024 之间"):format(Index))
+            end
+
+            UsedIds[Field.Id] = true
+
+            table.insert(FieldConfigs, {
+                Id = Field.Id,
+                Text = tostring(Field.Text or Field.Id),
+                Placeholder = tostring(Field.Placeholder or ""),
+                Required = Field.Required == true,
+                MaxBytes = math.floor(Field.MaxBytes or 1024),
+            })
+        end
+
+        local Feedback = {
+            Type = "Feedback",
+
+            Destroyed = false,
+            Visible = Info.Visible ~= false,
+            Disabled = Info.Disabled == true,
+
+            Sending = false,
+            Cooldown = Cooldown,
+            NextSendTime = 0,
+
+            Webhook = Info.Webhook,
+
+            Inputs = {},
+            Values = {},
+
+            Children = {},
+            SubmitButton = nil,
+        }
+
+        local UniqueId = HttpService:GenerateGUID(false)
+        local IndexPrefix = "Feedback_" .. UniqueId .. "_"
+
+        local function Notify(Description)
+            if Feedback.Destroyed or Groupbox.Destroyed then
+                return
+            end
+
+            Library:Notify({
+                Title = tostring(Info.NotifyTitle or "反馈提示"),
+                Description = tostring(Description),
+                Time = tonumber(Info.NotifyTime) or 5,
+            })
+        end
+
+        local function TrimText(Value)
+            return tostring(Value or ""):match("^%s*(.-)%s*$")
+        end
+
+        local function GetRequestFunction()
+            if type(request) == "function" then
+                return request
+            end
+
+            if type(http_request) == "function" then
+                return http_request
+            end
+
+            if type(syn) == "table" and type(syn.request) == "function" then
+                return syn.request
+            end
+
+            return nil
+        end
+
+        local function GetEmbedColor()
+            if typeof(Info.Color) == "Color3" then
+                local R = math.floor(Info.Color.R * 255 + 0.5)
+                local G = math.floor(Info.Color.G * 255 + 0.5)
+                local B = math.floor(Info.Color.B * 255 + 0.5)
+
+                return R * 65536 + G * 256 + B
+            end
+
+            if typeof(Info.Color) == "number" then
+                return math.clamp(math.floor(Info.Color), 0, 0xFFFFFF)
+            end
+
+            return 0x00FF00
+        end
+
+        local function ForEachChild(Method, Value)
+            for _, Child in ipairs(Feedback.Children) do
+                if Child
+                    and not Child.Destroyed
+                    and type(Child[Method]) == "function"
+                then
+                    Child[Method](Child, Value)
+                end
+            end
+        end
+
+        function Feedback:GetCooldownRemaining()
+            return math.max(0,math.ceil(self.NextSendTime - os.clock()))
+        end
+
+        function Feedback:SetCooldown(Seconds)
+            if self.Destroyed then
+                return
+            end
+
+            assert(typeof(Seconds) == "number" and Seconds >= 0 and Seconds < math.huge,"Cooldown 必须是大于或等于 0 的有限数字")
+            self.Cooldown = Seconds
+        end
+
+        function Feedback:SetWebhook(Url)
+            if self.Destroyed then
+                return
+            end
+
+            assert(Url == nil or typeof(Url) == "string","Webhook 必须是字符串或 nil")
+
+            self.Webhook = Url
+        end
+
+        function Feedback:SetVisible(Visible)
+            if self.Destroyed or Groupbox.Destroyed then
+                return
+            end
+
+            self.Visible = Visible == true
+            ForEachChild("SetVisible", self.Visible)
+        end
+
+        function Feedback:SetDisabled(Disabled)
+            if self.Destroyed or Groupbox.Destroyed then
+                return
+            end
+
+            self.Disabled = Disabled == true
+            ForEachChild("SetDisabled", self.Disabled)
+        end
+
+        function Feedback:SetValue(Id, Value)
+            if self.Destroyed or Groupbox.Destroyed then
+                return false
+            end
+
+            local Input = self.Inputs[Id]
+
+            if not Input or Input.Destroyed then
+                return false
+            end
+
+            Input:SetValue(tostring(Value or ""))
+            return true
+        end
+
+        function Feedback:GetValue(Id)
+            if self.Destroyed then
+                return nil
+            end
+
+            return self.Values[Id]
+        end
+
+        function Feedback:Clear()
+            if self.Destroyed or Groupbox.Destroyed then
+                return
+            end
+
+            for _, Field in ipairs(FieldConfigs) do
+                local Input = self.Inputs[Field.Id]
+
+                if Input and not Input.Destroyed then
+                    Input:SetValue("")
+                end
+            end
+        end
+
+        function Feedback:Submit()
+            if self.Destroyed or Groupbox.Destroyed then
+                return false
+            end
+
+            if self.Disabled then
+                return false
+            end
+
+            if self.Sending then
+                Notify("正在提交反馈，请稍候。")
+                return false
+            end
+
+            local Remaining = self:GetCooldownRemaining()
+
+            if Remaining > 0 then
+                Notify(("提交过于频繁，请等待 %d 秒后再试。"):format(Remaining))
+                return false
+            end
+
+            local Webhook = self.Webhook
+
+            if typeof(Webhook) ~= "string"
+                or Webhook:match("^%s*$")
+            then
+                Notify("尚未配置 Discord Webhook。")
+                return false
+            end
+
+            local HttpRequest = GetRequestFunction()
+
+            if not HttpRequest then
+                Notify("当前环境不支持 request,无法提交反馈。")
+                return false
+            end
+
+            local EmbedFields = {}
+
+            if Info.IncludePlayer ~= false then
+                local Player = Players.LocalPlayer
+
+                if not Player then
+                    Notify("无法获取玩家信息，请稍后重试。")
+                    return false
+                end
+
+                local UserId = tostring(Player.UserId)
+
+                table.insert(EmbedFields, {
+                    name = "玩家用户名(UserName)",
+                    value = "||" .. Player.Name .. "||",
+                    inline = true,
+                })
+
+                table.insert(EmbedFields, {
+                    name = "玩家 ID(UserId)",
+                    value = ("[%s](https://www.roblox.com/users/%s/profile)"):format(UserId, UserId),
+                    inline = true,
+                })
+            end
+
+            for _, Field in ipairs(FieldConfigs) do
+                local Value = TrimText(self.Values[Field.Id])
+
+                if Field.Required and Value == "" then
+                    Notify("请填写" .. Field.Text .. "。")
+                    return false
+                end
+
+                if #Value > Field.MaxBytes then
+                    Notify(("%s 过长，最多 %d 字节。"):format(Field.Text,Field.MaxBytes))
+                    return false
+                end
+
+                -- Discord 单个 Embed 最多支持 25 个字段。
+                if #EmbedFields >= 25 then
+                    Notify("反馈字段过多,最多支持 25 个字段。")
+                    return false
+                end
+
+                table.insert(EmbedFields, {
+                    name = Field.Text,
+                    value = Value ~= "" and Value or "未填写",
+                    inline = false,
+                })
+            end
+
+            local Embed = {
+                title = tostring(Info.Title or ""),
+                type = "rich",
+                color = GetEmbedColor(),
+                fields = EmbedFields,
+
+                footer = {
+                    text = tostring(Info.Footer or ""),
+                },
+            }
+
+            if Info.Timestamp ~= false then
+                Embed.timestamp = DateTime.now():ToIsoDate()
+            end
+
+            local Payload = {
+                content = "",
+                embeds = { Embed },
+                allowed_mentions = {
+                    parse = {},
+                },
+            }
+
+            self.Sending = true
+
+            -- 只有真正准备发送时才开始冷却。
+            -- 请求失败也会进入冷却。
+            self.NextSendTime = os.clock() + self.Cooldown
+
+            local Success, Response = pcall(function()
+                return HttpRequest({
+                    Url = Webhook,
+                    Method = "POST",
+
+                    Headers = {
+                        ["Content-Type"] = "application/json",
+                    },
+
+                    Body = HttpService:JSONEncode(Payload),
+                })
+            end)
+
+            self.Sending = false
+
+            if self.Destroyed or Groupbox.Destroyed then
+                return false
+            end
+
+            if not Success then
+                Notify("反馈提交失败：" .. tostring(Response))
+                if type(Info.OnResult) == "function" then
+                    Library:SafeCallback(
+                        Info.OnResult,
+                        false,
+                        nil,
+                        Response
+                    )
+                end
+
+                return false
+            end
+
+            local StatusCode = typeof(Response) == "table"
+                and tonumber(Response.StatusCode)
+                or nil
+
+            local IsSuccess = StatusCode ~= nil
+                and StatusCode >= 200
+                and StatusCode < 300
+
+            if IsSuccess then
+                Notify("反馈提交成功！")
+
+                if Info.ClearOnSuccess == true then
+                    self:Clear()
+                end
+            else
+                Notify(
+                    "反馈提交失败，状态码："
+                        .. tostring(StatusCode or "未知")
+                )
+
+                warn(
+                    "反馈提交失败，状态码：",
+                    StatusCode or "未知",
+                    "返回内容：",
+                    typeof(Response) == "table" and Response.Body or "无"
+                )
+            end
+
+            if type(Info.OnResult) == "function" then
+                Library:SafeCallback(
+                    Info.OnResult,
+                    IsSuccess,
+                    StatusCode,
+                    Response
+                )
+            end
+
+            return IsSuccess
+        end
+
+        -- 根据作者提供的 Fields 创建输入框。
+        for Index, Field in ipairs(FieldConfigs) do
+            local FieldId = Field.Id
+
+            Feedback.Values[FieldId] = ""
+
+            local Input = Groupbox:AddInput(
+                IndexPrefix .. tostring(Index),
+                {
+                    Text = Field.Text,
+                    Default = "",
+                    Placeholder = Field.Placeholder,
+
+                    AllowEmpty = true,
+                    Finished = false,
+                    ClearTextOnFocus = false,
+
+                    Callback = function(Value)
+                        Feedback.Values[FieldId] = tostring(Value or "")
+                    end,
+                }
+            )
+
+            Feedback.Inputs[FieldId] = Input
+            table.insert(Feedback.Children, Input)
+        end
+
+        Feedback.SubmitButton = Groupbox:AddButton({
+            Text = Info.ButtonText
+                or (
+                    Info.IncludePlayer == false
+                    and "提交反馈"
+                    or "提交反馈(上传用户名和ID)"
+                ),
+
+            Func = function()
+                Feedback:Submit()
+            end,
+        })
+
+        table.insert(Feedback.Children, Feedback.SubmitButton)
+
+        function Feedback:Destroy()
+            if self.Destroyed then
+                return
+            end
+
+            self.Destroyed = true
+
+            -- Groupbox 自身销毁时会负责销毁它的 Elements。
+            if Groupbox.Destroyed then
+                return
+            end
+
+            for Index = #self.Children, 1, -1 do
+                local Child = self.Children[Index]
+
+                if Child and not Child.Destroyed and Child.Destroy then
+                    Child:Destroy()
+                end
+            end
+
+            table.clear(self.Children)
+            table.clear(self.Inputs)
+        end
+
+        if not Feedback.Visible then
+            ForEachChild("SetVisible", false)
+        end
+
+        if Feedback.Disabled then
+            ForEachChild("SetDisabled", true)
+        end
+
+        return Feedback
     end
 
     function Funcs:AddButton(...)
