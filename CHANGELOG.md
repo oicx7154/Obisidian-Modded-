@@ -6,7 +6,16 @@
 
 - 新增 **Paragraph 折叠功能**，支持 Tab 和 Groupbox。
 - 新增 **InfoCard（信息卡片）**，支持 Tab 和 Groupbox。
-
+- 新增 **Feedback（问题反馈）控件**，支持添加到 Groupbox。
+- 支持作者通过 `Fields` 自定义输入框。
+- 每个输入框可分别设置标题、提示文字、是否必填和最大输入字节数。
+- 支持作者自定义提交冷却时间，默认为 60 秒。
+- 支持通过 Discord Webhook 发送反馈。
+- 支持自动附带玩家用户名、UserId 和 Roblox 主页链接。
+- 支持在 Discord 消息中显示时间戳。
+- 支持自定义 Embed 标题、颜色和底部文字。
+- 支持提交结果回调，以及提交成功后清空输入内容。
+- 
 ### 调整
 
 - Paragraph 在启用折叠后，标题为空时仍保留折叠操作区域。
@@ -14,6 +23,151 @@
 
 ---
 # 功能说明
+
+# Feedback（问题反馈）
+
+Feedback 用于创建一组输入框和提交按钮，并将反馈发送到 Discord Webhook。
+
+## 基本用法
+
+```lua
+local Feedback = Groupbox.fk:AddFeedback({
+    Webhook = "你的 Discord Webhook URL",
+
+    -- 冷却时间，单位：秒
+    Cooldown = 60,
+
+    Fields = {
+        {
+            Id = "QQ",
+            Text = "QQ号（选填）",
+            Placeholder = "请输入你的QQ号",
+            Required = false,
+        },
+        {
+            Id = "ScriptName",
+            Text = "脚本名字",
+            Placeholder = "请输入出现问题的脚本名字",
+            Required = true,
+        },
+        {
+            Id = "Description",
+            Text = "问题描述",
+            Placeholder = "请详细描述遇到的问题",
+            Required = true,
+        },
+    },
+
+    IncludePlayer = true,
+    Timestamp = true,
+
+    Title = "问题反馈",
+    Color = Color3.fromRGB(0, 255, 0),
+})
+```
+
+## 配置项
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `Webhook` | `string` | 无 | Discord Webhook 地址 |
+| `Cooldown` | `number` | `60` | 提交冷却时间，单位为秒；`0` 表示不设置冷却 |
+| `Fields` | `table` | 无 | 输入项数组，至少需要一项 |
+| `IncludePlayer` | `boolean` | `true` | 是否附带玩家用户名和 UserId |
+| `Timestamp` | `boolean` | `true` | 是否在 Embed 中显示时间戳 |
+| `Title` | `string` | `"问题反馈"` | Embed 标题 |
+| `Color` | `Color3` / `number` | 绿色 | Embed 侧边颜色 |
+| `Footer` | `string` | `"脚本问题反馈"` | Embed 底部文字 |
+| `Username` | `string` | `"问题反馈"` | Webhook 显示名称 |
+| `ButtonText` | `string` | 自动设置 | 提交按钮文字 |
+| `ClearOnSuccess` | `boolean` | `false` | 提交成功后是否清空输入 |
+| `Visible` | `boolean` | `true` | 是否显示控件 |
+| `Disabled` | `boolean` | `false` | 是否禁用控件 |
+| `NotifyTitle` | `string` | `"反馈提示"` | 通知标题 |
+| `NotifyTime` | `number` | `5` | 通知显示时间 |
+| `OnResult` | `function` | 无 | 请求结束后的结果回调 |
+
+## 输入项配置
+
+每个 `Fields` 项都可以单独设置：
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | `string` | 无 | 输入项标识，同一控件内必须唯一 |
+| `Text` | `string` | `Id` | 输入框标题和 Discord 字段名称 |
+| `Placeholder` | `string` | `""` | 输入框提示文字 |
+| `Required` | `boolean` | `false` | 是否必填 |
+| `MaxBytes` | `number` | `1024` | 最大字节数，范围为 `1` 到 `1024` |
+
+```lua
+Fields = {
+    {
+        Id = "Suggestion",
+        Text = "建议内容",
+        Placeholder = "请输入你的建议",
+        Required = true,
+        MaxBytes = 1024,
+    },
+}
+```
+
+> [!NOTE]
+> `MaxBytes` 按字节计算，不等同于字符数量；中文字符通常占多个字节。选填项未填写时，Discord 中显示“未填写”。
+
+## 常用方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `Submit()` | 手动提交反馈 |
+| `GetCooldownRemaining()` | 获取剩余冷却秒数 |
+| `SetCooldown(seconds)` | 修改后续提交的冷却时间 |
+| `SetWebhook(url)` | 修改 Webhook 地址 |
+| `SetValue(id, value)` | 设置指定输入项的值 |
+| `GetValue(id)` | 获取指定输入项的值 |
+| `Clear()` | 清空所有输入 |
+| `SetVisible(visible)` | 显示或隐藏控件 |
+| `SetDisabled(disabled)` | 启用或禁用控件 |
+| `Destroy()` | 销毁反馈控件 |
+
+```lua
+-- 获取和设置输入值
+print(Feedback:GetValue("ScriptName"))
+Feedback:SetValue("ScriptName", "我的脚本")
+
+-- 修改冷却时间
+Feedback:SetCooldown(120)
+
+-- 查看剩余冷却
+print(Feedback:GetCooldownRemaining())
+
+-- 清空输入
+Feedback:Clear()
+
+-- 隐藏或显示
+Feedback:SetVisible(false)
+Feedback:SetVisible(true)
+```
+
+> [!NOTE]
+> 修改 `Cooldown` 后，新的时间从下一次提交开始使用，不会改变已经开始的冷却。
+
+## 提交结果回调
+
+```lua
+OnResult = function(Success, StatusCode, Response)
+    if Success then
+        print("反馈提交成功！")
+    else
+        print("反馈提交失败，状态码：", StatusCode)
+    end
+end,
+```
+
+> [!IMPORTANT]
+> 客户端冷却可以被绕过.
+>
+> 启用 `IncludePlayer` 时，建议在界面中告知用户会上传 Roblox 用户名和 UserId。时间戳取自客户端设备，可能因设备时钟不准确而有偏差。
+
 ## Paragraph（段落）
 
 用于显示标题和文本内容，可以直接添加到 Tab 或 Groupbox。
