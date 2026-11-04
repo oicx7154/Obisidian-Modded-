@@ -3,56 +3,11 @@
 ## [更新日期：2026/11/4]
 ### CodeBlock
 
-代码块支持 Luau 语法高亮和复制原始代码，可添加到 Tab 或 Groupbox。
-
-#### 添加到 Tab
-
-```lua
-local CodeBlock = Tab:AddCodeBlock({
-    Title = "Luau 示例",
-    Side = "Left", -- Left / Right
-    SyntaxHighlight = true, -- 默认开启
-
-    Code = [[
--- 输出欢迎信息
-local message = "Hello, ObsUI!"
-print(message)
-    ]],
-})
-```
-
-#### 添加到 Groupbox
-
-```lua
-local CodeBlock = Groupbox:AddCodeBlock({
-    Title = "脚本示例",
-
-    Code = [[
-local value = 123
-print(value)
-    ]],
-})
-```
-
-#### 方法
-
-```lua
-CodeBlock:SetTitle("新的标题")
-CodeBlock:SetCode('print("新的代码")')
-CodeBlock:SetContent('print("新的代码")') -- SetCode 的兼容方法
-
-print(CodeBlock:GetCode())
-
-CodeBlock:SetSyntaxHighlight(false)
-CodeBlock:SetSyntaxHighlight(true)
-
-CodeBlock:Copy()
-CodeBlock:SetVisible(false)
-CodeBlock:Destroy()
-```
-
-语法高亮模块从仓库的 `addons/Luau.lua` 加载；加载失败时，代码会以普通文本显示
-
+- 新增 CodeBlock 代码块，支持添加到 Tab 和 Groupbox。
+- 支持从外置 `addons/Luau.lua` 加载 Luau 语法高亮。
+- 外置模块加载失败时，回退为普通文本显示。
+- 新增复制按钮，使用 `setclipboard` 复制原始代码。
+- 支持动态修改标题、代码、可见状态和语法高亮状态。
  
 ### 新增：Feedback 反馈功能
 
