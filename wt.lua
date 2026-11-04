@@ -7885,7 +7885,7 @@ do
             Cooldown = 60
         end
 
-        assert(typeof(Cooldown) == "number"and Cooldown >= 0and Cooldown < math.huge,"AddFeedback: Cooldown 必须是大于或等于 0 的有限数字")
+        assert(typeof(Cooldown) == "number"and Cooldown >= 0 and Cooldown < math.huge,"AddFeedback: Cooldown 必须是大于或等于 0 的有限数字")
 
         assert(typeof(Info.Fields) == "table" and #Info.Fields > 0,"AddFeedback: Fields 必须是非空数组")
 
@@ -7900,7 +7900,7 @@ do
             assert( not UsedIds[Field.Id],("AddFeedback: 字段 Id 重复：%s"):format(Field.Id))
 
             if Field.MaxBytes ~= nil then
-                assert(typeof(Field.MaxBytes) == "number"and Field.MaxBytes >= 1and Field.MaxBytes <= 1024,("AddFeedback: Fields[%d].MaxBytes 必须在 1 到 1024 之间"):format(Index))
+                assert(typeof(Field.MaxBytes) == "number"and Field.MaxBytes >= 1 and Field.MaxBytes <= 1024,("AddFeedback: Fields[%d].MaxBytes 必须在 1 到 1024 之间"):format(Index))
             end
 
             UsedIds[Field.Id] = true
@@ -8005,7 +8005,7 @@ do
                 return
             end
 
-            assert(typeof(Seconds) == "number" and Seconds >= 0and Seconds < math.huge,"Cooldown 必须是大于或等于 0 的有限数字")
+            assert(typeof(Seconds) == "number" and Seconds >= 0 and Seconds < math.huge,"Cooldown 必须是大于或等于 0 的有限数字")
             self.Cooldown = Seconds
         end
 
