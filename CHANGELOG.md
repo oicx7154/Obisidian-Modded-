@@ -37,6 +37,58 @@
 ---
 # 功能说明
 
+### CodeBlock
+
+代码块支持 Luau 语法高亮和复制原始代码，可添加到 Tab 或 Groupbox。
+
+#### 添加到 Tab
+
+```lua
+local CodeBlock = Tab:AddCodeBlock({
+    Title = "Luau 示例",
+    Side = "Left", -- Left / Right
+    SyntaxHighlight = true, -- 默认开启
+
+    Code = [[
+-- 输出欢迎信息
+local message = "Hello, ObsUI!"
+print(message)
+    ]],
+})
+```
+
+#### 添加到 Groupbox
+
+```lua
+local CodeBlock = Groupbox:AddCodeBlock({
+    Title = "脚本示例",
+
+    Code = [[
+local value = 123
+print(value)
+    ]],
+})
+```
+
+#### 方法
+
+```lua
+CodeBlock:SetTitle("新的标题")
+CodeBlock:SetCode('print("新的代码")')
+CodeBlock:SetContent('print("新的代码")') -- SetCode 的兼容方法
+
+print(CodeBlock:GetCode())
+
+CodeBlock:SetSyntaxHighlight(false)
+CodeBlock:SetSyntaxHighlight(true)
+
+CodeBlock:Copy()
+CodeBlock:SetVisible(false)
+CodeBlock:Destroy()
+```
+
+语法高亮模块从仓库的 `addons/Luau.lua` 加载；加载失败时，代码会以普通文本显示
+
 # Feedback（问题反馈）
 
 Feedback 用于创建一组输入框和提交按钮，并将反馈发送到 Discord Webhook。
