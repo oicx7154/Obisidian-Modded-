@@ -1,6 +1,20 @@
 # 更新日志
 
-**更新日期：** 2026-11-3
+## 2026-11-04
+
+### 新增
+
+- 新增 **Paragraph 折叠功能**，支持 Tab 和 Groupbox。
+- 新增 **InfoCard（信息卡片）**，支持 Tab 和 Groupbox。
+
+### 调整
+
+- Paragraph 在启用折叠后，标题为空时仍保留折叠操作区域。
+- Paragraph 折叠时仍可以修改内容，展开后显示最新内容。
+
+---
+
+## 2026-11-03
 
 ### 新增
 
@@ -9,15 +23,12 @@
 - 新增 **HoldButton（长按按钮）**。
 
 ---
-# 新增功能
 
-与原版相比，新增了 **Paragraph（段落）** 和 **ParagraphDropdown（段落下拉框）**。
-
----
+# 功能说明
 
 ## Paragraph（段落）
 
-用于显示标题和文本内容，可以在 Tab 或 Groupbox 中使用。
+用于显示标题和文本内容，可以直接添加到 Tab 或 Groupbox。
 
 ### 在 Tab 中使用
 
@@ -38,12 +49,168 @@ local paragraph = Groupbox:AddParagraph({
 })
 ```
 
-### 常用方法
+### 使用折叠功能
+
+设置 `Collapsible = true` 后，点击标题区域即可展开或折叠内容。
 
 ```lua
-paragraph:SetTitle("新标题")
-paragraph:SetContent("新的段落内容")
+local paragraph = Tab:AddParagraph({
+    Title = "更新公告",
+    Content = "这里是公告内容。",
+    Side = "Left",
+
+    Collapsible = true,
+    DefaultCollapsed = false,
+})
 ```
+
+也可以在 Groupbox 中使用：
+
+```lua
+local paragraph = Groupbox:AddParagraph({
+    Title = "功能介绍",
+    Content = "点击标题可以展开或折叠内容。",
+
+    Collapsible = true,
+    DefaultCollapsed = true,
+})
+```
+
+### 配置项
+
+| 配置项 | 类型 | 说明 |
+| --- | --- | --- |
+| `Title` | `string` | 段落标题 |
+| `Content` | `string` | 段落内容 |
+| `Side` | `string` / `number` | Tab 中的位置：`"Left"`、`"Right"`、`1` 或 `2` |
+| `TitleSize` | `number` | 标题文字大小，默认为 `15` |
+| `ContentSize` | `number` | 内容文字大小，默认为 `14` |
+| `RichText` | `boolean` | 是否启用内容的富文本 |
+| `Collapsible` | `boolean` | 是否启用折叠，默认为 `false` |
+| `DefaultCollapsed` | `boolean` | 是否默认折叠，默认为 `false` |
+| `Visible` | `boolean` | 是否显示，默认为 `true` |
+| `LayoutOrder` | `number` | 控件的布局顺序 |
+
+### 常用方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `SetTitle(title)` | 修改标题 |
+| `SetContent(content)` | 修改内容 |
+| `SetVisible(visible)` | 设置是否可见 |
+| `SetCollapsed(collapsed)` | 设置折叠状态 |
+| `Collapse()` | 折叠内容 |
+| `Expand()` | 展开内容 |
+| `ToggleCollapsed()` | 切换折叠状态 |
+| `IsCollapsed()` | 获取当前折叠状态 |
+| `Destroy()` | 销毁段落 |
+
+```lua
+paragraph:SetTitle("最新公告")
+paragraph:SetContent("这里是新的公告内容。")
+
+paragraph:Collapse()
+paragraph:Expand()
+paragraph:ToggleCollapsed()
+
+print("是否折叠：", paragraph:IsCollapsed())
+```
+
+> [!NOTE]
+> 折叠相关方法仅对启用了 `Collapsible` 的 Paragraph 生效。
+> 标题为空时，仍可通过标题区域的箭头操作折叠。
+
+---
+
+## InfoCard（信息卡片）
+
+用于以键值形式展示信息，例如作者、版本、更新时间和运行状态。
+
+可以直接添加到 Tab 或 Groupbox。
+
+### 在 Tab 中使用
+
+```lua
+local infoCard = Tab:AddInfoCard({
+    Title = "脚本信息",
+    Side = "Right",
+
+    Items = {
+        { Label = "作者", Value = "初夏" },
+        { Label = "版本", Value = "1.2.0" },
+        { Label = "状态", Value = "正常运行" },
+    },
+})
+```
+
+### 在 Groupbox 中使用
+
+```lua
+local infoCard = Groupbox:AddInfoCard({
+    Title = "用户信息",
+
+    Items = {
+        { Label = "用户名", Value = game.Players.LocalPlayer.Name },
+        { Label = "等级", Value = 100 },
+        { Label = "状态", Value = "在线" },
+    },
+})
+```
+
+### 配置项
+
+| 配置项 | 类型 | 说明 |
+| --- | --- | --- |
+| `Title` | `string` | 卡片标题 |
+| `Side` | `string` / `number` | Tab 中的位置：`"Left"`、`"Right"`、`1` 或 `2` |
+| `Items` | `table` | 信息项数组，每项包含 `Label` 和 `Value` |
+| `TitleSize` | `number` | 标题文字大小，默认为 `15` |
+| `TextSize` | `number` | 信息项文字大小，默认为 `14` |
+| `Visible` | `boolean` | 是否显示，默认为 `true` |
+| `LayoutOrder` | `number` | 控件的布局顺序 |
+
+### 常用方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `SetTitle(title)` | 修改卡片标题 |
+| `SetItems(items)` | 替换全部信息项 |
+| `SetValue(label, value)` | 修改第一个匹配名称的信息项 |
+| `AddItem(label, value)` | 添加一项信息 |
+| `RemoveItem(label)` | 删除第一个匹配名称的信息项 |
+| `SetVisible(visible)` | 设置是否可见 |
+| `Destroy()` | 销毁卡片 |
+
+```lua
+-- 修改标题
+infoCard:SetTitle("最新信息")
+
+-- 修改指定信息
+infoCard:SetValue("状态", "维护中")
+
+-- 添加信息
+infoCard:AddItem("更新时间", "2026-11-04")
+
+-- 删除信息
+infoCard:RemoveItem("等级")
+
+-- 替换全部信息
+infoCard:SetItems({
+    { Label = "作者", Value = "初夏" },
+    { Label = "版本", Value = "2.0.0" },
+})
+
+-- 隐藏或显示
+infoCard:SetVisible(false)
+infoCard:SetVisible(true)
+
+-- 销毁
+infoCard:Destroy()
+```
+
+> [!NOTE]
+> `SetValue()` 和 `RemoveItem()` 只处理第一个匹配的 `Label`。
+> 找不到对应名称时会返回 `false`。
 
 ---
 
@@ -72,7 +239,7 @@ local dropdown = Tab:AddParagraphDropdown({
 
     Contents = {
         ["1"] = "这里是 1 的内容。",
-        ["2"] = "这里 2 的内容。",
+        ["2"] = "这里是 2 的内容。",
         ["3"] = "这里是 3 的内容。",
     },
 
@@ -87,7 +254,7 @@ local dropdown = Tab:AddParagraphDropdown({
 | 配置项 | 类型 | 说明 |
 | --- | --- | --- |
 | `Title` | `string` | 下拉框标题 |
-| `Side` | `string` | 位置，可用 `"Left"`、`"Right"` 或 `"Full"` |
+| `Side` | `string` | 位置，可用 `"Left"` 或 `"Right"` |
 | `Mode` | `string` | 列表模式：`"Inline"` 或 `"Floating"` |
 | `Values` | `table` | 可选项数组，选项值应保持唯一 |
 | `Default` | `number` / `选项值` / `table` | 默认选择；数字按 `Values` 索引解释，多选时可传表 |
@@ -119,7 +286,7 @@ local dropdown = Tab:AddParagraphDropdown({
 
     Values = {
         "1",
-        "2"",
+        "2",
         "3",
     },
 
@@ -129,9 +296,9 @@ local dropdown = Tab:AddParagraphDropdown({
     },
 
     Contents = {
-        ["1] = "ts 1",
-        ["1"] = "ts 2",
-        ["1"] = "ts 3",
+        ["1"] = "这里是 1 的内容。",
+        ["2"] = "这里是 2 的内容。",
+        ["3"] = "这里是 3 的内容。",
     },
 
     Callback = function(selected)
@@ -149,7 +316,7 @@ local dropdown = Tab:AddParagraphDropdown({
 ```lua
 {
     ["1"] = true,
-    ["2"] = true,
+    ["3"] = true,
 }
 ```
 
@@ -263,3 +430,10 @@ local holdButton = Groupbox:AddHoldButton({
 ```
 
 返回对象包含 `Base`、`Stroke` 和 `FillBar` 等属性。当前实现尚未提供 `SetDisabled`、`SetVisible` 或 `Destroy` 等方法。
+
+---
+
+## 关于全宽布局
+
+- 新版 Paragraph 和 InfoCard 在容器不存在时会报错提示。
+- 当前 ParagraphDropdown 在容器不存在时会回退到左列。
