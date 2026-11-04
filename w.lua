@@ -8178,7 +8178,6 @@ do
             end
 
             local Payload = {
-                username = tostring(Info.Username or ""),
                 content = "",
                 embeds = { Embed },
                 allowed_mentions = {
