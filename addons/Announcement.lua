@@ -1,35 +1,21 @@
 local HttpService = cloneref(game:GetService("HttpService"))
 
-local function GetRequestFunction()
-    if type(request) == "function" then
-        return request
-    end
-
-    if type(http_request) == "function" then
-        return http_request
-    end
-
-    if type(syn) == "table" and type(syn.request) == "function" then
-        return syn.request
-    end
-
-    return nil
-end
-
 local function ShowAnnouncement(Window, Library, Config)
-    assert(typeof(Window) == "table", "Announcement: Window must be a table")
-    assert(typeof(Library) == "table", "Announcement: Library must be a table")
-
     Config = Config or {}
 
     local Url = Config.Url
-    local SaveFile = Config.SaveFile or "ObsUI_Announcement.json"
+    local SaveFile = Config.SaveFile or "UpdateAnnouncement.json"
     local DialogId = Config.DialogId or "RemoteAnnouncement"
+    local ButtonText = Config.ButtonText or "我知道了"
 
-    assert(typeof(Url) == "string" and Url ~= "", "Announcement: Url is required")
-    assert(typeof(SaveFile) == "string" and SaveFile ~= "", "Announcement: SaveFile must be a string")
+    if type(Url) ~= "string" or Url == "" then
+        warn("Announcement: JSON URL is missing.")
+        return false
+    end
 
-    local Request = GetRequestFunction()
+    local Request = type(request) == "function" and request
+        or type(http_request) == "function" and http_request
+        or type(syn) == "table" and type(syn.request) == "function" and syn.request
 
     if not Request then
         warn("Announcement: request is unavailable.")
@@ -39,34 +25,30 @@ local function ShowAnnouncement(Window, Library, Config)
     local Success, Response = pcall(Request, {
         Url = Url,
         Method = "GET",
-        Headers = {
-            ["Cache-Control"] = "no-cache",
-        },
     })
 
-    if not Success or typeof(Response) ~= "table" then
-        warn("Announcement: failed to request announcement.")
+    if not Success or type(Response) ~= "table" then
+        warn("Announcement: failed to request JSON.", Response)
         return false
     end
 
     local StatusCode = tonumber(Response.StatusCode)
-
     if StatusCode and (StatusCode < 200 or StatusCode >= 300) then
-        warn("Announcement: request failed with status", StatusCode)
+        warn("Announcement: JSON request failed with status", StatusCode)
         return false
     end
 
-    if typeof(Response.Body) ~= "string" or Response.Body == "" then
-        warn("Announcement: response body is empty.")
+    if type(Response.Body) ~= "string" or Response.Body == "" then
+        warn("Announcement: JSON response is empty.")
         return false
     end
 
-    local DecodeSuccess, Data = pcall(function()
+    local Decoded, Data = pcall(function()
         return HttpService:JSONDecode(Response.Body)
     end)
 
-    if not DecodeSuccess or typeof(Data) ~= "table" then
-        warn("Announcement: invalid JSON.")
+    if not Decoded or type(Data) ~= "table" then
+        warn("Announcement: invalid JSON.", Data)
         return false
     end
 
@@ -74,96 +56,100 @@ local function ShowAnnouncement(Window, Library, Config)
         return false
     end
 
-    if typeof(Data.Version) ~= "string" or Data.Version == "" then
+    if type(Data.Version) ~= "string" or Data.Version == "" then
         warn("Announcement: Version must be a non-empty string.")
         return false
     end
 
     local Version = Data.Version
-    local Title = typeof(Data.Title) == "string" and Data.Title or "脚本公告"
-    local Content = typeof(Data.Content) == "string" and Data.Content or ""
-
+    local Title = type(Data.Title) == "string" and Data.Title or "脚本公告"
+    local Content = type(Data.Content) == "string" and Data.Content or ""
+    local RepeatEnabled = Data.RepeatEnabled == true
     local IntervalDays = tonumber(Data.IntervalDays) or 3
 
-    if IntervalDays ~= IntervalDays or IntervalDays == math.huge then
+    if IntervalDays ~= IntervalDays or IntervalDays == math.huge or IntervalDays == -math.huge then
         IntervalDays = 3
     end
 
     IntervalDays = math.max(0, IntervalDays)
 
-    local State
+    local SavedData
 
     if type(isfile) == "function" and type(readfile) == "function" then
-        local ReadSuccess, Result = pcall(function()
-            if not isfile(SaveFile) then
-                return nil
+        local Checked, Exists = pcall(isfile, SaveFile)
+
+        if Checked and Exists then
+            local ReadSuccess, SavedText = pcall(readfile, SaveFile)
+
+            if ReadSuccess and type(SavedText) == "string" then
+                local SavedDecoded, Result = pcall(function()
+                    return HttpService:JSONDecode(SavedText)
+                end)
+
+                if SavedDecoded and type(Result) == "table" then
+                    SavedData = Result
+                end
             end
-
-            return HttpService:JSONDecode(readfile(SaveFile))
-        end)
-
-        if ReadSuccess and typeof(Result) == "table" then
-            State = Result
         end
+    else
+        warn("Announcement: file reading is unavailable; confirmation cannot be remembered across runs.")
     end
 
-    local Now = os.time()
+    if SavedData and SavedData.Version == Version then
+        if not RepeatEnabled then
+            return false
+        end
 
-    if State and State.Version == Version then
-        local ClosedAt = tonumber(State.ClosedAt)
+        local ClosedAt = tonumber(SavedData.ClosedAt)
+        local Now = os.time()
 
-        if ClosedAt and ClosedAt <= Now then
+        if ClosedAt and ClosedAt == ClosedAt and ClosedAt <= Now then
             local Elapsed = Now - ClosedAt
-            local IntervalSeconds = IntervalDays * 24 * 60 * 60
-
-            if Elapsed < IntervalSeconds then
+            if Elapsed < IntervalDays * 86400 then
                 return false
             end
         end
     end
 
-    -- Avoid stacking the announcement over an existing dialog.
-    if Library.ActiveDialog and not Library.ActiveDialog.Destroyed then
+    if Library.ActiveDialog then
         warn("Announcement: another dialog is active; announcement was skipped.")
         return false
     end
 
-    -- Avoid replacing another dialog with the same ID.
     if Library.Dialogues and Library.Dialogues[DialogId] then
-        warn("Announcement: dialog ID is already in use.")
+        warn("Announcement: dialog ID is already in use:", DialogId)
         return false
     end
 
     Window:AddDialog(DialogId, {
         Title = Title,
         Description = Content,
-
         OutsideClickDismiss = false,
         AutoDismiss = false,
-
         FooterButtons = {
             {
                 Id = "Confirm",
-                Title = Config.ButtonText or "我知道了",
+                Title = ButtonText,
                 Variant = "Primary",
-
                 Callback = function(Dialog)
-                    -- Save only when the player acknowledges the announcement.
                     if type(writefile) == "function" then
-                        local SaveSuccess, Err = pcall(function()
-                            local SaveData = {
+                        local Encoded, SavedText = pcall(function()
+                            return HttpService:JSONEncode({
                                 Version = Version,
                                 ClosedAt = os.time(),
-                            }
-
-                            writefile(SaveFile, HttpService:JSONEncode(SaveData))
+                            })
                         end)
 
-                        if not SaveSuccess then
-                            warn("Announcement: failed to save state:", tostring(Err))
+                        if Encoded then
+                            local Written, WriteError = pcall(writefile, SaveFile, SavedText)
+                            if not Written then
+                                warn("Announcement: failed to save confirmation.", WriteError)
+                            end
+                        else
+                            warn("Announcement: failed to encode confirmation.", SavedText)
                         end
                     else
-                        warn("Announcement: writefile is unavailable.")
+                        warn("Announcement: file writing is unavailable; confirmation cannot be remembered across runs.")
                     end
 
                     Dialog:Dismiss()
