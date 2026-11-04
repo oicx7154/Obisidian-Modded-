@@ -7872,64 +7872,122 @@ do
         end
 
         Info = Info or {}
-
         assert(typeof(Info) == "table", "AddFeedback: Info 必须是 table")
 
         local Groupbox = self
-        local HttpService = game:GetService("HttpService")
-        local Players = game:GetService("Players")
+        local HttpService = cloneref(game:GetService("HttpService"))
+        local Players = cloneref(game:GetService("Players"))
 
         local Cooldown = Info.Cooldown
-
         if Cooldown == nil then
             Cooldown = 60
         end
 
-        assert(typeof(Cooldown) == "number"and Cooldown >= 0 and Cooldown < math.huge,"AddFeedback: Cooldown 必须是大于或等于 0 的有限数字")
-
-        assert(typeof(Info.Fields) == "table" and #Info.Fields > 0,"AddFeedback: Fields 必须是非空数组")
+        assert(
+            typeof(Cooldown) == "number" and Cooldown >= 0 and Cooldown < math.huge,
+            "AddFeedback: Cooldown 必须是大于或等于 0 的有限数字"
+        )
+        assert(
+            typeof(Info.Fields) == "table" and #Info.Fields > 0,
+            "AddFeedback: Fields 必须是非空数组"
+        )
 
         local FieldConfigs = {}
+        local FieldsById = {}
         local UsedIds = {}
 
         for Index, Field in ipairs(Info.Fields) do
-            assert(typeof(Field) == "table",("AddFeedback: Fields[%d] 必须是 table"):format(Index))
+            assert(
+                typeof(Field) == "table",
+                ("AddFeedback: Fields[%d] 必须是 table"):format(Index)
+            )
+            assert(
+                typeof(Field.Id) == "string" and Field.Id ~= "",
+                ("AddFeedback: Fields[%d].Id 必须是非空字符串"):format(Index)
+            )
+            assert(
+                not UsedIds[Field.Id],
+                ("AddFeedback: 字段 Id 重复：%s"):format(Field.Id)
+            )
 
-            assert(typeof(Field.Id) == "string" and Field.Id ~= "",("AddFeedback: Fields[%d].Id 必须是非空字符串"):format(Index))
-
-            assert( not UsedIds[Field.Id],("AddFeedback: 字段 Id 重复：%s"):format(Field.Id))
+            local FieldType = Field.Type or "Input"
+            assert(
+                FieldType == "Input" or FieldType == "Dropdown",
+                ("AddFeedback: Fields[%d].Type 只能是 Input 或 Dropdown"):format(Index)
+            )
 
             if Field.MaxBytes ~= nil then
-                assert(typeof(Field.MaxBytes) == "number"and Field.MaxBytes >= 1 and Field.MaxBytes <= 1024,("AddFeedback: Fields[%d].MaxBytes 必须在 1 到 1024 之间"):format(Index))
+                assert(
+                    typeof(Field.MaxBytes) == "number"
+                        and Field.MaxBytes >= 1
+                        and Field.MaxBytes <= 1024,
+                    ("AddFeedback: Fields[%d].MaxBytes 必须在 1 到 1024 之间"):format(Index)
+                )
             end
 
-            UsedIds[Field.Id] = true
+            local FieldText = tostring(Field.Text or Field.Id)
+            assert(
+                FieldText:match("%S") ~= nil and #FieldText <= 256,
+                ("AddFeedback: Fields[%d].Text 不能为空，且最多 256 字节"):format(Index)
+            )
 
-            table.insert(FieldConfigs, {
+            if FieldType == "Dropdown" then
+                assert(
+                    typeof(Field.Values) == "table" and #Field.Values > 0,
+                    ("AddFeedback: Fields[%d].Values 必须是非空字符串数组"):format(Index)
+                )
+
+                for ValueIndex, Value in ipairs(Field.Values) do
+                    assert(
+                        typeof(Value) == "string" and Value ~= "",
+                        ("AddFeedback: Fields[%d].Values[%d] 必须是非空字符串"):format(Index, ValueIndex)
+                    )
+                end
+            end
+
+            local Config = {
                 Id = Field.Id,
-                Text = tostring(Field.Text or Field.Id),
+                Type = FieldType,
+                Text = FieldText,
                 Placeholder = tostring(Field.Placeholder or ""),
                 Required = Field.Required == true,
                 MaxBytes = math.floor(Field.MaxBytes or 1024),
-            })
+                Values = Field.Values,
+                Default = Field.Default,
+                Multi = Field.Multi == true,
+                AllowNull = Field.AllowNull == true,
+                Searchable = Field.Searchable == true,
+                Expandable = Field.Expandable,
+                MaxVisibleDropdownItems = Field.MaxVisibleDropdownItems,
+            }
+
+            UsedIds[Field.Id] = true
+            FieldsById[Field.Id] = Config
+            table.insert(FieldConfigs, Config)
         end
+
+        local ExtraFieldCount = Info.IncludePlayer == false and 0 or 2
+        assert(
+            #FieldConfigs + ExtraFieldCount <= 25,
+            "AddFeedback: 包含玩家信息在内，最多支持 25 个字段"
+        )
 
         local Feedback = {
             Type = "Feedback",
-
             Destroyed = false,
             Visible = Info.Visible ~= false,
             Disabled = Info.Disabled == true,
-
             Sending = false,
             Cooldown = Cooldown,
             NextSendTime = 0,
-
             Webhook = Info.Webhook,
 
+            -- Inputs contains both input and dropdown controls.
             Inputs = {},
-            Values = {},
+            Dropdowns = {},
 
+            -- Retained for compatibility; use GetValue for the current value.
+            Values = {},
             Children = {},
             SubmitButton = nil,
         }
@@ -7953,19 +8011,28 @@ do
             return tostring(Value or ""):match("^%s*(.-)%s*$")
         end
 
+        local function CopyValue(Value)
+            if typeof(Value) ~= "table" then
+                return Value
+            end
+
+            local Copy = {}
+            for Key, Item in pairs(Value) do
+                Copy[Key] = Item
+            end
+            return Copy
+        end
+
         local function GetRequestFunction()
             if type(request) == "function" then
                 return request
             end
-
             if type(http_request) == "function" then
                 return http_request
             end
-
             if type(syn) == "table" and type(syn.request) == "function" then
                 return syn.request
             end
-
             return nil
         end
 
@@ -7974,11 +8041,10 @@ do
                 local R = math.floor(Info.Color.R * 255 + 0.5)
                 local G = math.floor(Info.Color.G * 255 + 0.5)
                 local B = math.floor(Info.Color.B * 255 + 0.5)
-
                 return R * 65536 + G * 256 + B
             end
 
-            if typeof(Info.Color) == "number" then
+            if typeof(Info.Color) == "number" and Info.Color == Info.Color then
                 return math.clamp(math.floor(Info.Color), 0, 0xFFFFFF)
             end
 
@@ -7987,17 +8053,60 @@ do
 
         local function ForEachChild(Method, Value)
             for _, Child in ipairs(Feedback.Children) do
-                if Child
-                    and not Child.Destroyed
-                    and type(Child[Method]) == "function"
-                then
+                if Child and not Child.Destroyed and type(Child[Method]) == "function" then
                     Child[Method](Child, Value)
                 end
             end
         end
 
+        local function ReadFieldValue(Field)
+            local Control = Feedback.Inputs[Field.Id]
+            if not Control or Control.Destroyed then
+                return nil
+            end
+            return CopyValue(Control.Value)
+        end
+
+        local function FieldValueToText(Field, Value)
+            if Field.Type == "Dropdown" and Field.Multi then
+                if typeof(Value) ~= "table" then
+                    return ""
+                end
+
+                local Selected = {}
+                local Added = {}
+                local Control = Feedback.Inputs[Field.Id]
+                local CurrentValues = Control and Control.Values or Field.Values
+
+                -- Keep selected values in the dropdown's current order.
+                for _, Option in ipairs(CurrentValues or {}) do
+                    if Value[Option] == true then
+                        table.insert(Selected, tostring(Option))
+                        Added[Option] = true
+                    end
+                end
+
+                -- Include any remaining selected values.
+                local Remaining = {}
+                for Option, Active in pairs(Value) do
+                    if Active == true and not Added[Option] then
+                        table.insert(Remaining, tostring(Option))
+                    end
+                end
+
+                table.sort(Remaining)
+                for _, Option in ipairs(Remaining) do
+                    table.insert(Selected, Option)
+                end
+
+                return TrimText(table.concat(Selected, ", "))
+            end
+
+            return TrimText(Value)
+        end
+
         function Feedback:GetCooldownRemaining()
-            return math.max(0,math.ceil(self.NextSendTime - os.clock()))
+            return math.max(0, math.ceil(self.NextSendTime - os.clock()))
         end
 
         function Feedback:SetCooldown(Seconds)
@@ -8005,7 +8114,10 @@ do
                 return
             end
 
-            assert(typeof(Seconds) == "number" and Seconds >= 0 and Seconds < math.huge,"Cooldown 必须是大于或等于 0 的有限数字")
+            assert(
+                typeof(Seconds) == "number" and Seconds >= 0 and Seconds < math.huge,
+                "Cooldown 必须是大于或等于 0 的有限数字"
+            )
             self.Cooldown = Seconds
         end
 
@@ -8014,8 +8126,10 @@ do
                 return
             end
 
-            assert(Url == nil or typeof(Url) == "string","Webhook 必须是字符串或 nil")
-
+            assert(
+                Url == nil or typeof(Url) == "string",
+                "Webhook 必须是字符串或 nil"
+            )
             self.Webhook = Url
         end
 
@@ -8042,22 +8156,80 @@ do
                 return false
             end
 
-            local Input = self.Inputs[Id]
-
-            if not Input or Input.Destroyed then
+            local Field = FieldsById[Id]
+            local Control = self.Inputs[Id]
+            if not Field or not Control or Control.Destroyed then
                 return false
             end
 
-            Input:SetValue(tostring(Value or ""))
+            if Field.Type == "Dropdown" then
+                if Field.Multi then
+                    if Value == nil then
+                        Value = {}
+                    end
+
+                    assert(
+                        typeof(Value) == "table" or typeof(Value) == "string",
+                        "多选 Dropdown 的值必须是 table、string 或 nil"
+                    )
+
+                    -- Convert the selection to a dictionary of valid options.
+                    local Requested = {}
+                    if typeof(Value) == "string" then
+                        if Value ~= "" then
+                            Requested[Value] = true
+                        end
+                    else
+                        for Key, Item in pairs(Value) do
+                            if typeof(Item) == "boolean" then
+                                if Item then
+                                    Requested[Key] = true
+                                end
+                            else
+                                Requested[Item] = true
+                            end
+                        end
+                    end
+
+                    local Valid = {}
+                    for _, Option in ipairs(Control.Values) do
+                        if Requested[Option] then
+                            Valid[Option] = true
+                        end
+                    end
+
+                    Control:SetValue(Valid)
+                else
+                    assert(
+                        Value == nil or typeof(Value) == "string",
+                        "单选 Dropdown 的值必须是 string 或 nil"
+                    )
+
+                    if Value ~= nil and not table.find(Control.Values, Value) then
+                        return false
+                    end
+
+                    Control:SetValue(Value)
+                end
+            else
+                Control:SetValue(tostring(Value or ""))
+            end
+
+            self.Values[Id] = CopyValue(Control.Value)
             return true
         end
 
         function Feedback:GetValue(Id)
-            if self.Destroyed then
+            if self.Destroyed or Groupbox.Destroyed then
                 return nil
             end
 
-            return self.Values[Id]
+            local Field = FieldsById[Id]
+            if not Field then
+                return nil
+            end
+
+            return ReadFieldValue(Field)
         end
 
         function Feedback:Clear()
@@ -8066,20 +8238,25 @@ do
             end
 
             for _, Field in ipairs(FieldConfigs) do
-                local Input = self.Inputs[Field.Id]
+                local Control = self.Inputs[Field.Id]
+                if Control and not Control.Destroyed then
+                    if Field.Type == "Dropdown" then
+                        if Field.Multi then
+                            Control:SetValue({})
+                        else
+                            Control:SetValue(nil)
+                        end
+                    else
+                        Control:SetValue("")
+                    end
 
-                if Input and not Input.Destroyed then
-                    Input:SetValue("")
+                    self.Values[Field.Id] = CopyValue(Control.Value)
                 end
             end
         end
 
         function Feedback:Submit()
-            if self.Destroyed or Groupbox.Destroyed then
-                return false
-            end
-
-            if self.Disabled then
+            if self.Destroyed or Groupbox.Destroyed or self.Disabled then
                 return false
             end
 
@@ -8089,46 +8266,37 @@ do
             end
 
             local Remaining = self:GetCooldownRemaining()
-
             if Remaining > 0 then
                 Notify(("提交过于频繁，请等待 %d 秒后再试。"):format(Remaining))
                 return false
             end
 
             local Webhook = self.Webhook
-
-            if typeof(Webhook) ~= "string"
-                or Webhook:match("^%s*$")
-            then
+            if typeof(Webhook) ~= "string" or Webhook:match("^%s*$") then
                 Notify("尚未配置 Discord Webhook。")
                 return false
             end
 
             local HttpRequest = GetRequestFunction()
-
             if not HttpRequest then
-                Notify("当前环境不支持 request,无法提交反馈。")
+                Notify("当前环境不支持 request，无法提交反馈。")
                 return false
             end
 
             local EmbedFields = {}
-
             if Info.IncludePlayer ~= false then
                 local Player = Players.LocalPlayer
-
                 if not Player then
                     Notify("无法获取玩家信息，请稍后重试。")
                     return false
                 end
 
                 local UserId = tostring(Player.UserId)
-
                 table.insert(EmbedFields, {
                     name = "玩家用户名(UserName)",
                     value = "||" .. Player.Name .. "||",
                     inline = true,
                 })
-
                 table.insert(EmbedFields, {
                     name = "玩家 ID(UserId)",
                     value = ("[%s](https://www.roblox.com/users/%s/profile)"):format(UserId, UserId),
@@ -8137,21 +8305,28 @@ do
             end
 
             for _, Field in ipairs(FieldConfigs) do
-                local Value = TrimText(self.Values[Field.Id])
+                local Control = self.Inputs[Field.Id]
+                if not Control or Control.Destroyed then
+                    Notify("字段控件不存在：" .. Field.Text)
+                    return false
+                end
+
+                -- Read the control directly instead of relying on callback timing.
+                local RawValue = ReadFieldValue(Field)
+                local Value = FieldValueToText(Field, RawValue)
+                self.Values[Field.Id] = CopyValue(RawValue)
 
                 if Field.Required and Value == "" then
-                    Notify("请填写" .. Field.Text .. "。")
+                    if Field.Type == "Dropdown" then
+                        Notify("请选择" .. Field.Text .. "。")
+                    else
+                        Notify("请填写" .. Field.Text .. "。")
+                    end
                     return false
                 end
 
                 if #Value > Field.MaxBytes then
-                    Notify(("%s 过长，最多 %d 字节。"):format(Field.Text,Field.MaxBytes))
-                    return false
-                end
-
-                -- Discord 单个 Embed 最多支持 25 个字段。
-                if #EmbedFields >= 25 then
-                    Notify("反馈字段过多,最多支持 25 个字段。")
+                    Notify(("%s 过长，最多 %d 字节。"):format(Field.Text, Field.MaxBytes))
                     return false
                 end
 
@@ -8162,17 +8337,41 @@ do
                 })
             end
 
+            local Title = tostring(Info.Title or "")
+            local Footer = tostring(Info.Footer or "")
+
+            if #Title > 256 then
+                Notify("反馈标题过长，最多 256 字节。")
+                return false
+            end
+            if #Footer > 2048 then
+                Notify("反馈页脚过长，最多 2048 字节。")
+                return false
+            end
+
+            -- Use byte counts as a conservative embed length check.
+            local TotalBytes = #Title + #Footer
+            for _, Field in ipairs(EmbedFields) do
+                TotalBytes += #Field.name + #Field.value
+            end
+
+            if TotalBytes > 6000 then
+                Notify("反馈内容总长度过长，请缩短后重试。")
+                return false
+            end
+
             local Embed = {
-                title = tostring(Info.Title or ""),
                 type = "rich",
                 color = GetEmbedColor(),
                 fields = EmbedFields,
-
-                footer = {
-                    text = tostring(Info.Footer or ""),
-                },
             }
 
+            if Title ~= "" then
+                Embed.title = Title
+            end
+            if Footer ~= "" then
+                Embed.footer = { text = Footer }
+            end
             if Info.Timestamp ~= false then
                 Embed.timestamp = DateTime.now():ToIsoDate()
             end
@@ -8187,19 +8386,16 @@ do
 
             self.Sending = true
 
-            -- 只有真正准备发送时才开始冷却。
-            -- 请求失败也会进入冷却。
+            -- Start cooldown when sending; failed requests also consume it.
             self.NextSendTime = os.clock() + self.Cooldown
 
             local Success, Response = pcall(function()
                 return HttpRequest({
                     Url = Webhook,
                     Method = "POST",
-
                     Headers = {
                         ["Content-Type"] = "application/json",
                     },
-
                     Body = HttpService:JSONEncode(Payload),
                 })
             end)
@@ -8211,84 +8407,92 @@ do
             end
 
             if not Success then
-                Notify("反馈提交失败：" .. tostring(Response))
+                -- Request errors may contain the webhook URL.
+                Notify("反馈提交失败，请检查请求环境或网络。")
                 if type(Info.OnResult) == "function" then
-                    Library:SafeCallback(
-                        Info.OnResult,
-                        false,
-                        nil,
-                        Response
-                    )
+                    Library:SafeCallback(Info.OnResult, false, nil, Response)
                 end
-
                 return false
             end
 
             local StatusCode = typeof(Response) == "table"
                 and tonumber(Response.StatusCode)
                 or nil
-
             local IsSuccess = StatusCode ~= nil
                 and StatusCode >= 200
                 and StatusCode < 300
 
             if IsSuccess then
                 Notify("反馈提交成功！")
-
                 if Info.ClearOnSuccess == true then
                     self:Clear()
                 end
             else
-                Notify(
-                    "反馈提交失败，状态码："
-                        .. tostring(StatusCode or "未知")
-                )
-
-                warn(
-                    "反馈提交失败，状态码：",
-                    StatusCode or "未知",
-                    "返回内容：",
-                    typeof(Response) == "table" and Response.Body or "无"
-                )
+                Notify("反馈提交失败，状态码：" .. tostring(StatusCode or "未知"))
+                warn("反馈提交失败，状态码：", StatusCode or "未知")
             end
 
             if type(Info.OnResult) == "function" then
-                Library:SafeCallback(
-                    Info.OnResult,
-                    IsSuccess,
-                    StatusCode,
-                    Response
-                )
+                Library:SafeCallback(Info.OnResult, IsSuccess, StatusCode, Response)
             end
 
             return IsSuccess
         end
 
-        -- 根据作者提供的 Fields 创建输入框。
+        -- Create an input or dropdown for each field.
         for Index, Field in ipairs(FieldConfigs) do
             local FieldId = Field.Id
+            local Control
 
-            Feedback.Values[FieldId] = ""
-
-            local Input = Groupbox:AddInput(
-                IndexPrefix .. tostring(Index),
-                {
+            if Field.Type == "Dropdown" then
+                local DropdownInfo = {
                     Text = Field.Text,
-                    Default = "",
-                    Placeholder = Field.Placeholder,
-
-                    AllowEmpty = true,
-                    Finished = false,
-                    ClearTextOnFocus = false,
+                    Values = Field.Values,
+                    Default = Field.Default,
+                    Multi = Field.Multi,
+                    AllowNull = Field.AllowNull,
+                    Searchable = Field.Searchable,
 
                     Callback = function(Value)
-                        Feedback.Values[FieldId] = tostring(Value or "")
+                        Feedback.Values[FieldId] = CopyValue(Value)
                     end,
                 }
-            )
 
-            Feedback.Inputs[FieldId] = Input
-            table.insert(Feedback.Children, Input)
+                if Field.Expandable ~= nil then
+                    DropdownInfo.Expandable = Field.Expandable
+                end
+                if Field.MaxVisibleDropdownItems ~= nil then
+                    DropdownInfo.MaxVisibleDropdownItems = Field.MaxVisibleDropdownItems
+                end
+
+                Control = Groupbox:AddDropdown(
+                    IndexPrefix .. tostring(Index),
+                    DropdownInfo
+                )
+                Feedback.Dropdowns[FieldId] = Control
+            else
+                Control = Groupbox:AddInput(
+                    IndexPrefix .. tostring(Index),
+                    {
+                        Text = Field.Text,
+                        Default = "",
+                        Placeholder = Field.Placeholder,
+                        AllowEmpty = true,
+                        Finished = false,
+                        ClearTextOnFocus = false,
+
+                        Callback = function(Value)
+                            Feedback.Values[FieldId] = tostring(Value or "")
+                        end,
+                    }
+                )
+            end
+
+            assert(Control ~= nil, "AddFeedback: 无法创建字段控件：" .. Field.Text)
+
+            Feedback.Inputs[FieldId] = Control
+            Feedback.Values[FieldId] = CopyValue(Control.Value)
+            table.insert(Feedback.Children, Control)
         end
 
         Feedback.SubmitButton = Groupbox:AddButton({
@@ -8303,7 +8507,6 @@ do
                 Feedback:Submit()
             end,
         })
-
         table.insert(Feedback.Children, Feedback.SubmitButton)
 
         function Feedback:Destroy()
@@ -8313,27 +8516,27 @@ do
 
             self.Destroyed = true
 
-            -- Groupbox 自身销毁时会负责销毁它的 Elements。
+            -- The groupbox manages its own elements when destroyed.
             if Groupbox.Destroyed then
                 return
             end
 
             for Index = #self.Children, 1, -1 do
                 local Child = self.Children[Index]
-
-                if Child and not Child.Destroyed and Child.Destroy then
+                if Child and not Child.Destroyed and type(Child.Destroy) == "function" then
                     Child:Destroy()
                 end
             end
 
             table.clear(self.Children)
             table.clear(self.Inputs)
+            table.clear(self.Dropdowns)
+            table.clear(self.Values)
         end
 
         if not Feedback.Visible then
             ForEachChild("SetVisible", false)
         end
-
         if Feedback.Disabled then
             ForEachChild("SetDisabled", true)
         end
