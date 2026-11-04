@@ -62,6 +62,7 @@ return function(Tab)
             or tostring(loadError),
         Side = "Left",
         RichText = false,
+        Collapsible = true
     })
 
     local dropdown = Tab.support:AddParagraphDropdown({
