@@ -8500,7 +8500,7 @@ do
                 or (
                     Info.IncludePlayer == false
                     and "提交反馈"
-                    or "提交反馈(上传用户名和ID)"
+                    or "提交反馈"
                 ),
 
             Func = function()
