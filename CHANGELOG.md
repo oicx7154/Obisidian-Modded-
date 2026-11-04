@@ -13,17 +13,6 @@
 - Paragraph 折叠时仍可以修改内容，展开后显示最新内容。
 
 ---
-
-## 2026-11-03
-
-### 新增
-
-- 新增 **Paragraph（段落）**。
-- 新增 **ParagraphDropdown（段落下拉框）**。
-- 新增 **HoldButton（长按按钮）**。
-
----
-
 # 功能说明
 
 ## Paragraph（段落）
@@ -213,6 +202,16 @@ infoCard:Destroy()
 > 找不到对应名称时会返回 `false`。
 
 ---
+## 2026-11-03
+
+### 新增
+
+- 新增 **Paragraph（段落）**。
+- 新增 **ParagraphDropdown（段落下拉框）**。
+- 新增 **HoldButton（长按按钮）**。
+
+---
+# 功能说明
 
 ## ParagraphDropdown（段落下拉框）
 
