@@ -5122,7 +5122,7 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
 
     local TitleLabel = New("TextLabel", {
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -68, 1, 0),
+        Size = UDim2.new(1, -98, 1, 0),
         Text = Card.Title,
         TextColor3 = "FontColor",
         TextSize = tonumber(Info.TitleSize) or 15,
@@ -5154,7 +5154,43 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
         Color = "OutlineColor",
         Parent = CopyButton,
     })
+    local CollapseButton = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        BackgroundColor3 = "MainColor",
+        AutoButtonColor = false,
+        Position = UDim2.new(1, -64, 0.5, 0),
+        Size = UDim2.fromOffset(24, 24),
+        Text = "",
+        Parent = Header,
+    })
 
+    local CollapseCorner = New("UICorner", {
+        CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+        Parent = CollapseButton,
+    })
+    table.insert(Library.SpecificCorners, CollapseCorner)
+
+    New("UIStroke", {
+        Color = "OutlineColor",
+        Parent = CollapseButton,
+    })
+
+    local ChevronIcon = Library:GetIcon("chevron-down")
+
+    local CollapseIcon = New("ImageLabel", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.fromOffset(16, 16),
+
+        Image = ChevronIcon and ChevronIcon.Url or "",
+        ImageRectOffset = ChevronIcon and ChevronIcon.ImageRectOffset or Vector2.zero,
+        ImageRectSize = ChevronIcon and ChevronIcon.ImageRectSize or Vector2.zero,
+        ImageColor3 = "FontColor",
+        ImageTransparency = 0.3,
+
+        Parent = CollapseButton,
+    })
     local CodeArea = New("ScrollingFrame", {
         BackgroundColor3 = "BackgroundColor",
         BorderSizePixel = 0,
@@ -5343,7 +5379,51 @@ local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
             end
         end)
     end
+    Card.Collapsed = Info.DefaultCollapsed == true
+    Card.CollapseButton = CollapseButton
 
+    local function ApplyCollapsed()
+        if Card.Destroyed then
+            return
+        end
+
+        CodeArea.Visible = not Card.Collapsed
+        CollapseIcon.Rotation = Card.Collapsed and -90 or 0
+
+        ResizeOwner()
+        QueueUpdate()
+    end
+
+    function Card:SetCollapsed(Collapsed)
+        if self.Destroyed then
+            return
+        end
+
+        self.Collapsed = Collapsed == true
+        ApplyCollapsed()
+    end
+
+    function Card:Collapse()
+        self:SetCollapsed(true)
+    end
+
+    function Card:Expand()
+        self:SetCollapsed(false)
+    end
+
+    function Card:ToggleCollapsed()
+        self:SetCollapsed(not self.Collapsed)
+    end
+
+    function Card:IsCollapsed()
+        return self.Collapsed
+    end
+
+    Connect(CollapseButton.MouseButton1Click, function()
+        Card:ToggleCollapsed()
+    end)
+
+    ApplyCollapsed()
     function Card:SetTitle(Title)
         if self.Destroyed then
             return
