@@ -3,10 +3,13 @@
 ## 2026-11-04
 
 ### 新增
-
+- 修复 Paragraph 和 CodeBlock 的多行显示问题。
+- 实现 Tab 中 Full 内容与左右两列共用外层滚动区域。
+- 
 - 新增 **Paragraph 折叠功能**，支持 Tab 和 Groupbox。
 - 新增 **InfoCard（信息卡片）**，支持 Tab 和 Groupbox。
 - 新增 **Feedback（问题反馈）控件**，支持添加到 Groupbox。
+- 
 - 支持作者通过 `Fields` 自定义输入框。
 - 每个输入框可分别设置标题、提示文字、是否必填和最大输入字节数。
 - 支持作者自定义提交冷却时间，默认为 60 秒。
@@ -20,7 +23,12 @@
 - 支持通过 `Required` 分别设置输入框和下拉框是否必填。
 - 提交时直接读取控件当前值，多选内容会转换为文字发送。
 - `SetValue`、`GetValue` 和 `Clear` 支持下拉框字段。
- 
+- ### CodeBlock
+- 新增 CodeBlock 代码块，支持添加到 Tab 和 Groupbox。
+- 支持从外置 `addons/Luau.lua` 加载 Luau 语法高亮。
+- 外置模块加载失败时，回退为普通文本显示。
+- 新增复制按钮，使用 `setclipboard` 复制原始代码。
+- 支持动态修改标题、代码、可见状态和语法高亮状态。
 ### 调整
 
 - Paragraph 在启用折叠后，标题为空时仍保留折叠操作区域。
