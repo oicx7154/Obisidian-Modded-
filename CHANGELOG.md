@@ -212,7 +212,6 @@ infoCard:Destroy()
 
 ---
 # 功能说明
-
 ## ParagraphDropdown（段落下拉框）
 
 将下拉列表和段落内容组合在一起，直接添加到 Tab。
