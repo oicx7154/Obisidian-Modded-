@@ -4526,13 +4526,39 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
             end
 
             local Scale = Library.DPIScale or 1
-
             if Scale <= 0 then
                 Scale = 1
             end
 
             local Gap = Header.Visible and 5 or 0
-            local TextHeight = ContentLabel.TextBounds.Y / Scale
+            local Width = ContentLabel.AbsoluteSize.X / Scale
+
+            -- Wait for a usable width before measuring wrapped text.
+            if Width <= 0 then
+                return 0
+            end
+
+            local TextHeight
+
+            if ContentLabel.RichText then
+                -- RichText must be measured using the rendered label.
+                TextHeight = ContentLabel.TextBounds.Y / Scale
+            else
+                local Success, _, Height = pcall(function()
+                    return Library:GetTextBounds(
+                        ContentLabel.Text,
+                        ContentLabel.FontFace,
+                        ContentLabel.TextSize,
+                        Width
+                    )
+                end)
+
+                if Success and typeof(Height) == "number" then
+                    TextHeight = Height
+                else
+                    TextHeight = ContentLabel.TextBounds.Y / Scale
+                end
+            end
 
             return Gap + math.ceil(math.max(0, TextHeight))
         end
@@ -4905,6 +4931,260 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
         table.insert(Owner.Elements, Card)
         ResizeOwner()
     end
+
+    return Card
+end
+local HighlightLuau
+local HighlighterLoaded = false
+
+local function GetLuauHighlighter()
+    if HighlighterLoaded then
+        return HighlightLuau
+    end
+
+    HighlighterLoaded = true
+
+    local Url = "https://raw.githubusercontent.com/oicx7154/Obisidian-Modded-/main/addons/Luau.lua"
+
+    local Request = type(request) == "function" and request
+        or type(http_request) == "function" and http_request
+        or type(syn) == "table" and type(syn.request) == "function" and syn.request
+
+    if not Request then
+        warn("CodeBlock: request is not available; syntax highlighting is disabled.")
+        return nil
+    end
+
+    local Success, Response = pcall(Request, {
+        Url = Url,
+        Method = "GET",
+    })
+
+    if not Success or type(Response) ~= "table" then
+        warn("CodeBlock: failed to load the syntax highlighter.")
+        return nil
+    end
+
+    local StatusCode = tonumber(Response.StatusCode)
+    if StatusCode and (StatusCode < 200 or StatusCode >= 300) then
+        warn("CodeBlock: highlighter request failed with status", StatusCode)
+        return nil
+    end
+
+    if type(Response.Body) ~= "string" or Response.Body == "" then
+        warn("CodeBlock: highlighter response is empty.")
+        return nil
+    end
+
+    local CompileSuccess, Chunk, CompileError = pcall(loadstring, Response.Body)
+    if not CompileSuccess or type(Chunk) ~= "function" then
+        warn("CodeBlock: failed to compile the syntax highlighter.", CompileError or Chunk)
+        return nil
+    end
+
+    local RunSuccess, Result = pcall(Chunk)
+    if not RunSuccess or type(Result) ~= "function" then
+        warn("CodeBlock: the highlighter module must return a function.")
+        return nil
+    end
+
+    HighlightLuau = Result
+    return HighlightLuau
+end
+local function CreateCodeBlock(Owner, Info, IsTab, TabCornerRadius)
+    if Owner.Destroyed then
+        return nil
+    end
+
+    Info = Info or {}
+    assert(typeof(Info) == "table", "CodeBlock Info must be a table")
+
+    local CardInfo = {
+        Title = tostring(Info.Title or "Code"),
+        Content = tostring(Info.Code or ""),
+        Side = Info.Side,
+        LayoutOrder = Info.LayoutOrder,
+        Visible = Info.Visible,
+        TitleSize = Info.TitleSize,
+        ContentSize = Info.TextSize or 14,
+        RichText = false,
+        Collapsible = false,
+    }
+
+    local Card = CreateCustomCard(
+        Owner,
+        CardInfo,
+        "Paragraph",
+        IsTab,
+        TabCornerRadius
+    )
+
+    if not Card then
+        return nil
+    end
+
+    Card.Type = "CodeBlock"
+    Card.Code = Card.Content
+    Card.ContentLabel.Font = Enum.Font.Code
+
+    local Highlighter = Info.SyntaxHighlight ~= false and GetLuauHighlighter() or nil
+
+    Card.SyntaxHighlight = Highlighter ~= nil
+    Card.ContentLabel.RichText = Card.SyntaxHighlight
+
+    local function RefreshCodeDisplay()
+        if Card.Destroyed then
+            return
+        end
+
+        if Card.SyntaxHighlight and Highlighter then
+            local Success, Result = pcall(Highlighter, Card.Code)
+
+            if Success and type(Result) == "string" then
+                Card.ContentLabel.RichText = true
+                Card.ContentLabel.Text = Result
+                return
+            end
+
+            warn("CodeBlock: syntax highlighting failed; displaying plain text.")
+        end
+
+        Card.ContentLabel.RichText = false
+        Card.ContentLabel.Text = Card.Code
+    end
+
+    RefreshCodeDisplay()
+
+    local CopyButton = New("TextButton", {
+        AnchorPoint = Vector2.new(1, 0),
+        BackgroundColor3 = "MainColor",
+        AutoButtonColor = false,
+        Position = UDim2.new(1, 0, 0, 0),
+        Size = UDim2.fromOffset(54, 20),
+        Text = "Copy",
+        TextSize = 13,
+        ZIndex = Card.Header.ZIndex + 1,
+        Parent = Card.Header,
+    })
+
+    local CopyCorner = New("UICorner", {
+        CornerRadius = UDim.new(0, Library.CornerRadius / 2),
+        Parent = CopyButton,
+    })
+    table.insert(Library.SpecificCorners, CopyCorner)
+
+    New("UIStroke", {
+        Color = "OutlineColor",
+        Parent = CopyButton,
+    })
+
+    Card.CopyButton = CopyButton
+    Card.Header.Visible = true
+    Card.TitleLabel.Size = UDim2.new(1, -62, 0, 0)
+
+    local Minimum = Card.Header:FindFirstChildOfClass("UISizeConstraint")
+    if Minimum then
+        Minimum.MinSize = Vector2.new(0, 20)
+    end
+
+    local OriginalSetTitle = Card.SetTitle
+    local OriginalSetContent = Card.SetContent
+    local ResetId = 0
+
+    function Card:SetTitle(Title)
+        if self.Destroyed then
+            return
+        end
+
+        OriginalSetTitle(self, Title)
+        self.Header.Visible = true
+
+        if Minimum then
+            Minimum.MinSize = Vector2.new(0, 20)
+        end
+    end
+
+    function Card:SetCode(Code)
+        if self.Destroyed then
+            return
+        end
+
+        self.Code = tostring(Code or "")
+        OriginalSetContent(self, self.Code)
+        RefreshCodeDisplay()
+    end
+
+    function Card:SetSyntaxHighlight(Enabled)
+        if self.Destroyed then
+            return
+        end
+
+        if Enabled == true and not Highlighter then
+            Highlighter = GetLuauHighlighter()
+        end
+
+        self.SyntaxHighlight = Enabled == true and Highlighter ~= nil
+        RefreshCodeDisplay()
+    end
+
+    -- Keep SetContent compatible with the underlying paragraph.
+    function Card:SetContent(Content)
+        self:SetCode(Content)
+    end
+
+    function Card:GetCode()
+        if self.Destroyed then
+            return nil
+        end
+
+        return self.Code
+    end
+
+    function Card:Copy()
+        if self.Destroyed then
+            return false
+        end
+
+        if type(setclipboard) ~= "function" then
+            Library:Notify({
+                Title = "CodeBlock",
+                Description = "当前环境不支持复制到剪贴板。",
+                Time = 4,
+            })
+            return false
+        end
+
+        local Success = pcall(setclipboard, self.Code)
+        if not Success then
+            Library:Notify({
+                Title = "CodeBlock",
+                Description = "复制失败，请检查当前环境。",
+                Time = 4,
+            })
+        end
+
+        return Success
+    end
+
+    table.insert(Card.Connections, CopyButton.MouseButton1Click:Connect(function()
+        if Card.Destroyed then
+            return
+        end
+
+        local Success = Card:Copy()
+        ResetId += 1
+        local CurrentId = ResetId
+
+        CopyButton.Text = Success and "Copied" or "Failed"
+
+        task.delay(1.5, function()
+            if Card.Destroyed or CurrentId ~= ResetId then
+                return
+            end
+
+            CopyButton.Text = "Copy"
+        end)
+    end))
 
     return Card
 end
@@ -7715,6 +7995,10 @@ do
         return CreateCustomCard(self,Info,"Paragraph",false)
     end
 
+    function Funcs:AddCodeBlock(Info)
+        return CreateCodeBlock(self, Info, false)
+    end
+
     function Funcs:AddInfoCard(Info)
         return CreateCustomCard(self,Info,"InfoCard",false)
     end
@@ -8141,6 +8425,67 @@ do
             self.Visible = Visible == true
             ForEachChild("SetVisible", self.Visible)
         end
+        local ButtonUpdateRunning = false
+
+        local function GetSubmitButtonText()
+            return tostring(Info.ButtonText or ( Info.IncludePlayer == false and "提交反馈" or "提交反馈(上传用户名和ID)"))
+        end
+
+        local function UpdateSubmitButton()
+            if Feedback.Destroyed or Groupbox.Destroyed then
+                return false
+            end
+
+            local Button = Feedback.SubmitButton
+            if not Button or Button.Destroyed then
+                return false
+            end
+
+            local Remaining = Feedback:GetCooldownRemaining()
+            local Busy = Feedback.Sending or Remaining > 0
+            local Text
+
+            if Feedback.Sending then
+                Text = "提交中..."
+            elseif Remaining > 0 then
+                Text = ("请等待 %d 秒"):format(Remaining)
+            else
+                Text = GetSubmitButtonText()
+            end
+
+            if Button.Text ~= Text then
+                Button:SetText(Text)
+            end
+
+            local Disabled = Feedback.Disabled or Busy
+            if Button.Disabled ~= Disabled then
+                Button:SetDisabled(Disabled)
+            end
+
+            return Busy
+        end
+
+        local function StartButtonUpdater()
+            local NeedsUpdate = UpdateSubmitButton()
+
+            if not NeedsUpdate or ButtonUpdateRunning then
+                return
+            end
+
+            ButtonUpdateRunning = true
+
+            task.spawn(function()
+                while not Feedback.Destroyed and not Groupbox.Destroyed do
+                    task.wait(0.1)
+
+                    if not UpdateSubmitButton() then
+                        break
+                    end
+                end
+
+                ButtonUpdateRunning = false
+            end)
+        end
 
         function Feedback:SetDisabled(Disabled)
             if self.Destroyed or Groupbox.Destroyed then
@@ -8149,6 +8494,9 @@ do
 
             self.Disabled = Disabled == true
             ForEachChild("SetDisabled", self.Disabled)
+
+            -- Keep the submit button disabled while sending or cooling down.
+            UpdateSubmitButton()
         end
 
         function Feedback:SetValue(Id, Value)
@@ -8254,7 +8602,6 @@ do
                 end
             end
         end
-
         function Feedback:Submit()
             if self.Destroyed or Groupbox.Destroyed or self.Disabled then
                 return false
@@ -8387,6 +8734,8 @@ do
 
             -- Start cooldown when sending; failed requests also consume it.
             self.NextSendTime = os.clock() + self.Cooldown
+            
+            StartButtonUpdater()
 
             local Success, Response = pcall(function()
                 return HttpRequest({
@@ -8400,7 +8749,7 @@ do
             end)
 
             self.Sending = false
-
+            UpdateSubmitButton()
             if self.Destroyed or Groupbox.Destroyed then
                 return false
             end
@@ -16024,6 +16373,14 @@ function Library:CreateWindow(WindowInfo)
                 self,
                 Info,
                 "Paragraph",
+                true,
+                WindowInfo.CornerRadius
+            )
+        end
+        function Tab:AddCodeBlock(Info)
+            return CreateCodeBlock(
+                self,
+                Info,
                 true,
                 WindowInfo.CornerRadius
             )
