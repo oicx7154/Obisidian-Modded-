@@ -4220,7 +4220,663 @@ end
 function Library:OnUnload(Callback)
     table.insert(Library.UnloadSignals, Callback)
 end
+--// Paragraph / InfoCard Shared Helpers \\--
 
+local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
+    if Owner.Destroyed then
+        return nil
+    end
+
+    Info = Info or {}
+
+    local ParentContainer
+    local BoxHolder
+
+    if IsTab then
+        local IsFull = Info.Side == "Full"
+
+        if IsFull then
+            -- No longer silently reverting to the left column to avoid mistakenly thinking full width has been applied
+            assert(
+                Owner.FullParagraphContainer,
+                "Side = 'Full' requires creating Tab.FullParagraphContainer first"
+            )
+
+            ParentContainer = Owner.FullParagraphContainer
+        else
+            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
+            ParentContainer = Owner.Sides[Side]
+        end
+    else
+        ParentContainer = Owner.Container
+    end
+
+    assert(ParentContainer, "Can't find the parent container for the control")
+
+    local Card = {
+        Type = CardType,
+
+        Title = tostring(Info.Title or ""),
+        Visible = Info.Visible ~= false,
+        Destroyed = false,
+
+        Connections = {},
+    }
+
+    local function Connect(Signal, Callback)
+        local Connection = Signal:Connect(Callback)
+        table.insert(Card.Connections, Connection)
+        return Connection
+    end
+
+    local function ResizeOwner()
+        if not IsTab and not Owner.Destroyed and Owner.Resize then
+            Owner:Resize()
+        end
+    end
+
+    if IsTab then
+        BoxHolder = New("Frame", {
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 0),
+            Visible = Card.Visible,
+            LayoutOrder = Info.LayoutOrder or 0,
+            Parent = ParentContainer,
+        })
+
+        New("UIListLayout", {
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Parent = BoxHolder,
+        })
+
+        New("UIPadding", {
+            PaddingTop = UDim.new(0, 4),
+            PaddingBottom = UDim.new(0, 4),
+            Parent = BoxHolder,
+        })
+    end
+
+    local Holder = New("Frame", {
+        BackgroundColor3 = IsTab and "BackgroundColor" or "MainColor",
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Size = UDim2.new(1, 0, 0, 0),
+        Visible = IsTab and true or Card.Visible,
+        LayoutOrder = IsTab and 0 or (Info.LayoutOrder or 0),
+        Parent = IsTab and BoxHolder or ParentContainer,
+    })
+
+    local Corner = New("UICorner", {
+        CornerRadius = UDim.new(
+            0,
+            IsTab and (TabCornerRadius or Library.CornerRadius)
+                or (Library.CornerRadius / 2)
+        ),
+        Parent = Holder,
+    })
+
+    if IsTab then
+        table.insert(Library.Corners, Corner)
+        Library:AddOutline(Holder)
+    else
+        table.insert(Library.SpecificCorners, Corner)
+
+        New("UIStroke", {
+            Color = "OutlineColor",
+            Parent = Holder,
+        })
+    end
+
+    New("UIPadding", {
+        PaddingTop = UDim.new(0, IsTab and 10 or 8),
+        PaddingBottom = UDim.new(0, IsTab and 10 or 8),
+        PaddingLeft = UDim.new(0, IsTab and 12 or 10),
+        PaddingRight = UDim.new(0, IsTab and 12 or 10),
+        Parent = Holder,
+    })
+
+    New("UIListLayout", {
+        FillDirection = Enum.FillDirection.Vertical,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 0),
+        Parent = Holder,
+    })
+
+    Card.BoxHolder = BoxHolder
+    Card.Holder = Holder
+
+    -- Header 单独作为点击区域：
+    -- 即使 Title 为空，可折叠 Paragraph 仍保留点击区域。
+    local Header = New("TextButton", {
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        AutoButtonColor = false,
+        Size = UDim2.new(1, 0, 0, 0),
+        LayoutOrder = 1,
+        Text = "",
+        Visible = false,
+        Parent = Holder,
+    })
+
+    local HeaderMinimum = New("UISizeConstraint", {
+        MinSize = Vector2.new(0, 0),
+        Parent = Header,
+    })
+
+    local Collapsible = CardType == "Paragraph" and Info.Collapsible == true
+
+    local TitleLabel = New("TextLabel", {
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, Collapsible and -22 or 0, 0, 0),
+
+        Text = Card.Title,
+        TextColor3 = "FontColor",
+        TextSize = Info.TitleSize or 15,
+        Font = Enum.Font.GothamBold,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+
+        Visible = Card.Title ~= "",
+        Parent = Header,
+    })
+
+    Card.TitleLabel = TitleLabel
+    Card.Header = Header
+
+    local Arrow
+
+    if Collapsible then
+        local Icon = Library:GetIcon("chevron-down")
+
+        Arrow = New("ImageLabel", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, 0, 0.5, 0),
+            Size = UDim2.fromOffset(16, 16),
+
+            Image = Icon and Icon.Url or "",
+            ImageRectOffset = Icon and Icon.ImageRectOffset or Vector2.zero,
+            ImageRectSize = Icon and Icon.ImageRectSize or Vector2.zero,
+            ImageColor3 = "FontColor",
+            ImageTransparency = 0.35,
+
+            Parent = Header,
+        })
+
+        Card.Arrow = Arrow
+    end
+
+    local function UpdateHeader()
+        TitleLabel.Text = Card.Title
+        TitleLabel.Visible = Card.Title ~= ""
+
+        Header.Visible = Collapsible or Card.Title ~= ""
+        HeaderMinimum.MinSize = Vector2.new(0, Collapsible and 18 or 0)
+    end
+
+    function Card:SetTitle(Title)
+        if self.Destroyed then return end
+
+        self.Title = tostring(Title or "")
+        UpdateHeader()
+        ResizeOwner()
+    end
+
+    function Card:SetVisible(Visible)
+        if self.Destroyed then return end
+
+        self.Visible = Visible == true
+
+        if IsTab then
+            BoxHolder.Visible = self.Visible
+        else
+            Holder.Visible = self.Visible
+        end
+
+        ResizeOwner()
+    end
+
+    -- When the size of the Groupbox list changes, Resize will also be called automatically.
+    -- Here, we listen to the Holder to support containers like DependencyGroupbox.
+    if not IsTab then
+        Connect(Holder:GetPropertyChangedSignal("AbsoluteSize"), function()
+            if not Card.Destroyed then
+                ResizeOwner()
+            end
+        end)
+    end
+
+    UpdateHeader()
+
+    if CardType == "Paragraph" then
+        Card.Content = tostring(Info.Content or "")
+        Card.Collapsible = Collapsible
+        Card.Collapsed = Collapsible and Info.DefaultCollapsed == true
+
+        local ContentViewport = New("Frame", {
+            BackgroundTransparency = 1,
+            ClipsDescendants = true,
+            Size = UDim2.new(1, 0, 0, 0),
+            LayoutOrder = 2,
+            Visible = Card.Content ~= "",
+            Parent = Holder,
+        })
+
+        -- The spacing goes into the cropping area and will retract together when collapsed.
+        local ContentLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Position = UDim2.fromOffset(0, Header.Visible and 5 or 0),
+            Size = UDim2.new(1, 0, 0, 0),
+
+            Text = Card.Content,
+            TextColor3 = "FontColor",
+            TextSize = Info.ContentSize or 14,
+            RichText = Info.RichText == true,
+            TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = Enum.TextYAlignment.Top,
+
+            Parent = ContentViewport,
+        })
+
+        Card.ContentLabel = ContentLabel
+        Card.ContentViewport = ContentViewport
+
+        local HeightTween
+        local TweenConnection
+
+        local function StopHeightTween()
+            if TweenConnection then
+                TweenConnection:Disconnect()
+                TweenConnection = nil
+            end
+
+            if HeightTween then
+                HeightTween:Cancel()
+                HeightTween = nil
+            end
+        end
+
+        local function GetContentHeight()
+            local Scale = Library.DPIScale or 1
+
+            if Scale <= 0 then
+                Scale = 1
+            end
+
+            local Gap = Header.Visible and 5 or 0
+            return math.max(0, ContentLabel.AbsoluteSize.Y / Scale) + Gap
+        end
+
+        local function UpdateContentPosition()
+            ContentLabel.Position = UDim2.fromOffset(
+                0,
+                Header.Visible and 5 or 0
+            )
+        end
+
+        local function UpdateArrow()
+            if Arrow then
+                -- chevron-down: expands when pointing down, collapses when pointing up
+                Arrow.Rotation = Card.Collapsed and 180 or 0
+                Arrow.ImageTransparency = Card.Collapsed and 0.5 or 0
+            end
+        end
+
+        local function SetViewportHeight(Animate)
+            if Card.Destroyed then return end
+
+            StopHeightTween()
+            UpdateContentPosition()
+            UpdateArrow()
+
+            local HasContent = Card.Content ~= ""
+            local TargetHeight = (HasContent and not Card.Collapsed)
+                and GetContentHeight()
+                or 0
+
+            if HasContent then
+                ContentViewport.Visible = true
+            end
+
+            if Animate and HasContent then
+                local Tween = TweenService:Create(
+                    ContentViewport,
+                    TweenInfo.new(
+                        0.22,
+                        Enum.EasingStyle.Quad,
+                        Enum.EasingDirection.Out
+                    ),
+                    {
+                        Size = UDim2.new(1, 0, 0, TargetHeight),
+                    }
+                )
+
+                HeightTween = Tween
+
+                TweenConnection = Tween.Completed:Connect(function(State)
+                    if HeightTween ~= Tween then
+                        return
+                    end
+
+                    if TweenConnection then
+                        TweenConnection:Disconnect()
+                        TweenConnection = nil
+                    end
+
+                    HeightTween = nil
+
+                    if State == Enum.PlaybackState.Completed
+                        and not Card.Destroyed
+                    then
+                        ContentViewport.Visible =
+                            Card.Content ~= "" and not Card.Collapsed
+                        ResizeOwner()
+                    end
+                end)
+
+                Tween:Play()
+            else
+                ContentViewport.Size = UDim2.new(1, 0, 0, TargetHeight)
+                ContentViewport.Visible = HasContent and not Card.Collapsed
+                ResizeOwner()
+            end
+        end
+
+        -- 覆盖通用 SetTitle：标题变化会影响内容间距。
+        function Card:SetTitle(Title)
+            if self.Destroyed then return end
+
+            self.Title = tostring(Title or "")
+            UpdateHeader()
+            SetViewportHeight(false)
+        end
+
+        function Card:SetContent(Content)
+            if self.Destroyed then return end
+
+            self.Content = tostring(Content or "")
+            ContentLabel.Text = self.Content
+
+            -- 折叠时仍更新文字；展开后显示新内容。
+            SetViewportHeight(false)
+        end
+
+        function Card:SetCollapsed(Collapsed)
+            if self.Destroyed or not self.Collapsible then
+                return
+            end
+
+            Collapsed = Collapsed == true
+
+            if self.Collapsed == Collapsed then
+                return
+            end
+
+            self.Collapsed = Collapsed
+            SetViewportHeight(true)
+        end
+
+        function Card:Collapse()
+            self:SetCollapsed(true)
+        end
+
+        function Card:Expand()
+            self:SetCollapsed(false)
+        end
+
+        function Card:ToggleCollapsed()
+            self:SetCollapsed(not self.Collapsed)
+        end
+
+        function Card:IsCollapsed()
+            return self.Collapsed == true
+        end
+
+        if Collapsible then
+            Connect(Header.MouseButton1Click, function()
+                Card:ToggleCollapsed()
+            end)
+        end
+
+        -- 文本换行、DPI 或容器宽度变化后重新计算内容高度。
+        Connect(ContentLabel:GetPropertyChangedSignal("AbsoluteSize"), function()
+            if Card.Destroyed or Card.Collapsed then
+                return
+            end
+
+            SetViewportHeight(false)
+        end)
+
+        Card._Cleanup = function()
+            StopHeightTween()
+        end
+
+        UpdateArrow()
+
+        -- 初次创建时文字布局可能尚未完成。
+        task.defer(function()
+            if not Card.Destroyed then
+                SetViewportHeight(false)
+            end
+        end)
+
+    elseif CardType == "InfoCard" then
+        Card.Items = {}
+
+        local RowsHolder = New("Frame", {
+            AutomaticSize = Enum.AutomaticSize.Y,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 0),
+            LayoutOrder = 2,
+            Parent = Holder,
+        })
+
+        local RowsPadding = New("UIPadding", {
+            PaddingTop = UDim.new(0, 0),
+            Parent = RowsHolder,
+        })
+
+        New("UIListLayout", {
+            FillDirection = Enum.FillDirection.Vertical,
+            SortOrder = Enum.SortOrder.LayoutOrder,
+            Padding = UDim.new(0, 5),
+            Parent = RowsHolder,
+        })
+
+        Card.RowsHolder = RowsHolder
+
+        local function UpdateRowsPadding()
+            RowsPadding.PaddingTop = UDim.new(
+                0,
+                Header.Visible and #Card.Items > 0 and 7 or 0
+            )
+        end
+
+        local function RebuildRows()
+            if Card.Destroyed then return end
+
+            for _, Child in ipairs(RowsHolder:GetChildren()) do
+                if Child:IsA("GuiObject") then
+                    Child:Destroy()
+                end
+            end
+
+            for Index, Item in ipairs(Card.Items) do
+                local Row = New("Frame", {
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 0),
+                    LayoutOrder = Index,
+                    Parent = RowsHolder,
+                })
+
+                New("UIListLayout", {
+                    FillDirection = Enum.FillDirection.Horizontal,
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    VerticalAlignment = Enum.VerticalAlignment.Top,
+                    Parent = Row,
+                })
+
+                New("TextLabel", {
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(0.4, -4, 0, 0),
+                    LayoutOrder = 1,
+
+                    Text = tostring(Item.Label or ""),
+                    TextColor3 = "FontColor",
+                    TextTransparency = 0.4,
+                    TextSize = Info.TextSize or 14,
+                    TextWrapped = true,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextYAlignment = Enum.TextYAlignment.Top,
+
+                    Parent = Row,
+                })
+
+                New("TextLabel", {
+                    AutomaticSize = Enum.AutomaticSize.Y,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(0.6, 4, 0, 0),
+                    LayoutOrder = 2,
+
+                    Text = tostring(Item.Value == nil and "" or Item.Value),
+                    TextColor3 = "FontColor",
+                    TextSize = Info.TextSize or 14,
+                    TextWrapped = true,
+                    TextXAlignment = Enum.TextXAlignment.Right,
+                    TextYAlignment = Enum.TextYAlignment.Top,
+
+                    Parent = Row,
+                })
+            end
+
+            RowsHolder.Visible = #Card.Items > 0
+            UpdateRowsPadding()
+            ResizeOwner()
+        end
+
+        function Card:SetTitle(Title)
+            if self.Destroyed then return end
+
+            self.Title = tostring(Title or "")
+            UpdateHeader()
+            UpdateRowsPadding()
+            ResizeOwner()
+        end
+
+        function Card:SetItems(Items)
+            if self.Destroyed then return end
+
+            assert(type(Items) == "table", "InfoCard Items 必须是数组")
+
+            local NewItems = {}
+
+            for Index, Item in ipairs(Items) do
+                assert(
+                    type(Item) == "table",
+                    ("InfoCard Items[%d] 必须是表"):format(Index)
+                )
+
+                table.insert(NewItems, {
+                    Label = Item.Label,
+                    Value = Item.Value,
+                })
+            end
+
+            self.Items = NewItems
+            RebuildRows()
+        end
+
+        -- 通过名称更新第一项匹配的 Value。
+        -- 没有找到时返回 false。
+        function Card:SetValue(Label, Value)
+            if self.Destroyed then return false end
+
+            for _, Item in ipairs(self.Items) do
+                if Item.Label == Label then
+                    Item.Value = Value
+                    RebuildRows()
+                    return true
+                end
+            end
+
+            return false
+        end
+
+        function Card:AddItem(Label, Value)
+            if self.Destroyed then return end
+
+            table.insert(self.Items, {
+                Label = Label,
+                Value = Value,
+            })
+
+            RebuildRows()
+        end
+
+        -- 删除第一项匹配的 Label。
+        function Card:RemoveItem(Label)
+            if self.Destroyed then return false end
+
+            for Index, Item in ipairs(self.Items) do
+                if Item.Label == Label then
+                    table.remove(self.Items, Index)
+                    RebuildRows()
+                    return true
+                end
+            end
+
+            return false
+        end
+
+        Card:SetItems(Info.Items or {})
+    end
+
+    function Card:Destroy()
+        if self.Destroyed then return end
+
+        self.Destroyed = true
+
+        if self._Cleanup then
+            self._Cleanup()
+        end
+
+        for _, Connection in ipairs(self.Connections) do
+            Connection:Disconnect()
+        end
+
+        table.clear(self.Connections)
+
+        if IsTab then
+            BoxHolder:Destroy()
+        else
+            Holder:Destroy()
+
+            -- 父容器自身销毁时不修改正在遍历的 Elements。
+            if not Owner.Destroyed and Owner.Elements then
+                local Index = table.find(Owner.Elements, self)
+
+                if Index then
+                    table.remove(Owner.Elements, Index)
+                end
+            end
+
+            ResizeOwner()
+        end
+    end
+
+    if not IsTab then
+        table.insert(Owner.Elements, Card)
+        ResizeOwner()
+    end
+
+    return Card
+end
 local BaseAddons, BaseGroupbox = {}, {}
 do
     local Funcs = {}
@@ -7024,151 +7680,21 @@ do
         return Label
     end
     function Funcs:AddParagraph(Info)
-        if self.Destroyed then
-            return nil
-        end
-
-        Info = Info or {}
-
-        local Groupbox = self
-
-        local Paragraph = {
-            Title = tostring(Info.Title or ""),
-            Content = tostring(Info.Content or ""),
-            Visible = Info.Visible ~= false,
-            Destroyed = false,
-            Type = "Paragraph",
-            Connections = {},
-        }
-
-        local Holder = New("Frame", {
-            BackgroundColor3 = "MainColor",
-            AutomaticSize = Enum.AutomaticSize.Y,
-            Size = UDim2.new(1, 0, 0, 0),
-            Visible = Paragraph.Visible,
-            Parent = Groupbox.Container,
-        })
-
-        New("UICorner", {
-            CornerRadius = UDim.new(0, Library.CornerRadius / 2),
-            Parent = Holder,
-        })
-
-        New("UIStroke", {
-            Color = "OutlineColor",
-            Parent = Holder,
-        })
-
-        New("UIPadding", {
-            PaddingTop = UDim.new(0, 8),
-            PaddingBottom = UDim.new(0, 8),
-            PaddingLeft = UDim.new(0, 10),
-            PaddingRight = UDim.new(0, 10),
-            Parent = Holder,
-        })
-
-        New("UIListLayout", {
-            FillDirection = Enum.FillDirection.Vertical,
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 4),
-            Parent = Holder,
-        })
-
-        -- 标题
-        local TitleLabel = New("TextLabel", {
-            BackgroundTransparency = 1,
-            AutomaticSize = Enum.AutomaticSize.Y,
-            Size = UDim2.new(1, 0, 0, 0),
-            LayoutOrder = 1,
-            Text = Paragraph.Title,
-            TextSize = Info.TitleSize or 15,
-            Font = Enum.Font.GothamBold,
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Top,
-            Visible = Paragraph.Title ~= "",
-            Parent = Holder,
-        })
-
-        local ContentLabel = New("TextLabel", {
-            BackgroundTransparency = 1,
-            AutomaticSize = Enum.AutomaticSize.Y,
-            Size = UDim2.new(1, 0, 0, 0),
-            LayoutOrder = 2,
-            Text = Paragraph.Content,
-            TextSize = Info.ContentSize or 14,
-            TextWrapped = true,
-            RichText = Info.RichText == true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Top,
-            Visible = Paragraph.Content ~= "",
-            Parent = Holder,
-        })
-
-        Paragraph.Holder = Holder
-        Paragraph.TitleLabel = TitleLabel
-        Paragraph.ContentLabel = ContentLabel
-
-        function Paragraph:SetTitle(Title)
-            if self.Destroyed then return end
-
-            self.Title = tostring(Title or "")
-            TitleLabel.Text = self.Title
-            TitleLabel.Visible = self.Title ~= ""
-            Groupbox:Resize()
-        end
-
-        function Paragraph:SetContent(Content)
-            if self.Destroyed then return end
-
-            self.Content = tostring(Content or "")
-            ContentLabel.Text = self.Content
-            ContentLabel.Visible = self.Content ~= ""
-            Groupbox:Resize()
-        end
-
-        function Paragraph:SetVisible(Visible)
-            if self.Destroyed then return end
-
-            self.Visible = Visible == true
-            Holder.Visible = self.Visible
-            Groupbox:Resize()
-        end
-
-        function Paragraph:Destroy()
-            if self.Destroyed then return end
-
-            self.Destroyed = true
-
-            for _, connection in ipairs(self.Connections) do
-                connection:Disconnect()
-            end
-
-            Holder:Destroy()
-
-            local index = table.find(Groupbox.Elements, self)
-            if index then
-                table.remove(Groupbox.Elements, index)
-            end
-
-            Groupbox:Resize()
-        end
-
-        table.insert(
-            Paragraph.Connections,
-            Holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-                if not Paragraph.Destroyed then
-                    Groupbox:Resize()
-                end
-            end)
+        return CreateCustomCard(
+            self,
+            Info,
+            "Paragraph",
+            false
         )
-
-        table.insert(Groupbox.Elements, Paragraph)
-        Groupbox:Resize()
-
-        return Paragraph
     end
-
+    function Funcs:AddInfoCard(Info)
+        return CreateCustomCard(
+            self,
+            Info,
+            "InfoCard",
+            false
+        )
+    end
     function Funcs:AddHoldButton(...)
         if self.Destroyed then return nil end
 
@@ -14794,148 +15320,22 @@ function Library:CreateWindow(WindowInfo)
             return Groupbox
         end
         function Tab:AddParagraph(Info)
-            Info = Info or {}
-
-            local Owner = self
-
-            local IsFull = Info.Side == "Full"
-            local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
-
-            if IsFull and not Owner.FullParagraphContainer then
-            end
-
-            local ParentContainer = IsFull
-                and Owner.FullParagraphContainer
-                or Owner.Sides[Side]
-
-            local Paragraph = {
-                Title = tostring(Info.Title or ""),
-                Content = tostring(Info.Content or ""),
-                Visible = Info.Visible ~= false,
-                Destroyed = false,
-                Type = "Paragraph",
-            }
-
-            -- 外层间距与 Groupbox 保持一致
-            local BoxHolder = New("Frame", {
-                AutomaticSize = Enum.AutomaticSize.Y,
-                BackgroundTransparency = 1,
-                Size = UDim2.fromScale(1, 0),
-                Visible = Paragraph.Visible,
-                LayoutOrder = Info.LayoutOrder or 0,
-                Parent = ParentContainer,
-            })
-
-            New("UIListLayout", {
-                Padding = UDim.new(0, 6),
-                Parent = BoxHolder,
-            })
-
-            New("UIPadding", {
-                PaddingTop = UDim.new(0, 4),
-                PaddingBottom = UDim.new(0, 4),
-                Parent = BoxHolder,
-            })
-
-            -- 可见卡片
-            local Holder = New("Frame", {
-                BackgroundColor3 = "BackgroundColor",
-                AutomaticSize = Enum.AutomaticSize.Y,
-                Size = UDim2.new(1, 0, 0, 0),
-                Parent = BoxHolder,
-            })
-
-            table.insert(
-                Library.Corners,
-                New("UICorner", {
-                    CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
-                    Parent = Holder,
-                })
+            return CreateCustomCard(
+                self,
+                Info,
+                "Paragraph",
+                true,
+                WindowInfo.CornerRadius
             )
-
-            Library:AddOutline(Holder)
-
-            New("UIPadding", {
-                PaddingTop = UDim.new(0, 10),
-                PaddingBottom = UDim.new(0, 10),
-                PaddingLeft = UDim.new(0, 12),
-                PaddingRight = UDim.new(0, 12),
-                Parent = Holder,
-            })
-
-            New("UIListLayout", {
-                FillDirection = Enum.FillDirection.Vertical,
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 5),
-                Parent = Holder,
-            })
-
-            local TitleLabel = New("TextLabel", {
-                BackgroundTransparency = 1,
-                AutomaticSize = Enum.AutomaticSize.Y,
-                Size = UDim2.new(1, 0, 0, 0),
-                LayoutOrder = 1,
-                Text = Paragraph.Title,
-                TextSize = Info.TitleSize or 15,
-                Font = Enum.Font.GothamBold,
-                TextWrapped = true,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextYAlignment = Enum.TextYAlignment.Top,
-                Visible = Paragraph.Title ~= "",
-                Parent = Holder,
-            })
-
-            local ContentLabel = New("TextLabel", {
-                BackgroundTransparency = 1,
-                AutomaticSize = Enum.AutomaticSize.Y,
-                Size = UDim2.new(1, 0, 0, 0),
-                LayoutOrder = 2,
-                Text = Paragraph.Content,
-                TextSize = Info.ContentSize or 14,
-                RichText = Info.RichText == true,
-                TextWrapped = true,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                TextYAlignment = Enum.TextYAlignment.Top,
-                Visible = Paragraph.Content ~= "",
-                Parent = Holder,
-            })
-
-            Paragraph.BoxHolder = BoxHolder
-            Paragraph.Holder = Holder
-            Paragraph.TitleLabel = TitleLabel
-            Paragraph.ContentLabel = ContentLabel
-
-            function Paragraph:SetTitle(Title)
-                if self.Destroyed then return end
-
-                self.Title = tostring(Title or "")
-                TitleLabel.Text = self.Title
-                TitleLabel.Visible = self.Title ~= ""
-            end
-
-            function Paragraph:SetContent(Content)
-                if self.Destroyed then return end
-
-                self.Content = tostring(Content or "")
-                ContentLabel.Text = self.Content
-                ContentLabel.Visible = self.Content ~= ""
-            end
-
-            function Paragraph:SetVisible(Visible)
-                if self.Destroyed then return end
-
-                self.Visible = Visible == true
-                BoxHolder.Visible = self.Visible
-            end
-
-            function Paragraph:Destroy()
-                if self.Destroyed then return end
-
-                self.Destroyed = true
-                BoxHolder:Destroy()
-            end
-
-            return Paragraph
+        end
+        function Tab:AddInfoCard(Info)
+            return CreateCustomCard(
+                self,
+                Info,
+                "InfoCard",
+                true,
+                WindowInfo.CornerRadius
+            )
         end
         function Tab:AddParagraphDropdown(Info)
             Info = Info or {}
