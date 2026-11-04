@@ -55,8 +55,8 @@ local paragraph = Groupbox:AddParagraph({
 
 ```lua
 local paragraph = Tab:AddParagraph({
-    Title = "更新公告",
-    Content = "这里是公告内容。",
+    Title = "内容",
+    Content = "内容。",
     Side = "Left",
 
     Collapsible = true,
@@ -106,8 +106,8 @@ local paragraph = Groupbox:AddParagraph({
 | `Destroy()` | 销毁段落 |
 
 ```lua
-paragraph:SetTitle("最新公告")
-paragraph:SetContent("这里是新的公告内容。")
+paragraph:SetTitle("内容")
+paragraph:SetContent("这里是新的内容。")
 
 paragraph:Collapse()
 paragraph:Expand()
@@ -136,7 +136,7 @@ local infoCard = Tab:AddInfoCard({
     Side = "Right",
 
     Items = {
-        { Label = "作者", Value = "初夏" },
+        { Label = "内容", Value = "1111" },
         { Label = "版本", Value = "1.2.0" },
         { Label = "状态", Value = "正常运行" },
     },
@@ -196,8 +196,8 @@ infoCard:RemoveItem("等级")
 
 -- 替换全部信息
 infoCard:SetItems({
-    { Label = "作者", Value = "初夏" },
-    { Label = "版本", Value = "2.0.0" },
+    { Label = "内容", Value = "1" },
+    { Label = "内容", Value = "2.0.0" },
 })
 
 -- 隐藏或显示
