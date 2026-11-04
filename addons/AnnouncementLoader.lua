@@ -44,8 +44,8 @@ return function(Window, Library)
         end
 
         local Called, Result = pcall(ShowAnnouncement, Window, Library, {
-            Url = "https://raw.githubusercontent.com/oicx7154/Obisidian-Modded-/main/addons/Announcement.json",
-            SaveFile = "ObsUI_Announcement.json",
+            Url = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/Update%20Announcement.json",
+            SaveFile = "Update.json",
             DialogId = "RemoteAnnouncement",
             ButtonText = "我知道了",
         })
