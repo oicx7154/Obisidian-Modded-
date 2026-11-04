@@ -15166,8 +15166,15 @@ function Library:CreateWindow(WindowInfo)
         local TabIcon
 
         local TabContainer
+        local TabScroll
+        local TabContent
+        local FullParagraphContainer
+        local FullParagraphList
+        local ColumnsHolder
         local TabLeft
         local TabRight
+        local TabLeftList
+        local TabRightList
         local Expanded = false
 
         Icon = Library:GetCustomIcon(Icon)
@@ -15250,54 +15257,96 @@ function Library:CreateWindow(WindowInfo)
                 Parent = Container,
             })
 
-            TabLeft = New("ScrollingFrame", {
+            TabScroll = New("ScrollingFrame", {
                 AutomaticCanvasSize = Enum.AutomaticSize.Y,
                 BackgroundTransparency = 1,
-                CanvasSize = UDim2.fromScale(0, 0),
-                ScrollBarImageTransparency = 1,
-                ScrollBarThickness = 0,
-                Size = UDim2.new(0.5, -3, 1, 0),
+                BorderSizePixel = 0,
+                CanvasSize = UDim2.fromOffset(0, 0),
+                ScrollBarImageColor3 = "OutlineColor",
+                ScrollBarImageTransparency = 0.5,
+                ScrollBarThickness = 3,
+                ScrollingDirection = Enum.ScrollingDirection.Y,
+                Size = UDim2.fromScale(1, 1),
                 Parent = TabContainer,
             })
-            New("UIListLayout", {
-                Padding = UDim.new(0, 2),
-                Parent = TabLeft,
-            })
-            New("UIPadding", {
-                PaddingBottom = UDim.new(0, 2),
-                PaddingLeft = UDim.new(0, 2),
-                PaddingRight = UDim.new(0, 2),
-                PaddingTop = UDim.new(0, 2),
-                Parent = TabLeft,
-            })
-            do
-                New("Frame", {
-                    BackgroundTransparency = 1,
-                    LayoutOrder = -1,
-                    Parent = TabLeft,
-                })
-                New("Frame", {
-                    BackgroundTransparency = 1,
-                    LayoutOrder = 1,
-                    Parent = TabLeft,
-                })
-            end
 
-            TabRight = New("ScrollingFrame", {
-                AnchorPoint = Vector2.new(1, 0),
-                AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            TabContent = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
                 BackgroundTransparency = 1,
-                CanvasSize = UDim2.fromScale(0, 0),
-                Position = UDim2.fromScale(1, 0),
-                ScrollBarImageTransparency = 1,
-                ScrollBarThickness = 0,
-                Size = UDim2.new(0.5, -3, 1, 0),
-                Parent = TabContainer,
+                Size = UDim2.new(1, -4, 0, 0),
+                Parent = TabScroll,
             })
+
             New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Parent = TabContent,
+            })
+
+            FullParagraphContainer = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromScale(1, 0),
+                LayoutOrder = 1,
+                Parent = TabContent,
+            })
+
+            FullParagraphList = New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 2),
+                Parent = FullParagraphContainer,
+            })
+
+            New("UIPadding", {
+                PaddingLeft = UDim.new(0, 2),
+                PaddingRight = UDim.new(0, 2),
+                PaddingTop = UDim.new(0, 2),
+                PaddingBottom = UDim.new(0, 2),
+                Parent = FullParagraphContainer,
+            })
+
+            ColumnsHolder = New("Frame", {
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 0, 0),
+                LayoutOrder = 2,
+                Parent = TabContent,
+            })
+
+            TabLeft = New("Frame", {
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Size = UDim2.new(0.5, -3, 0, 0),
+                Parent = ColumnsHolder,
+            })
+
+            TabLeftList = New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 2),
+                Parent = TabLeft,
+            })
+
+            New("UIPadding", {
+                PaddingBottom = UDim.new(0, 2),
+                PaddingLeft = UDim.new(0, 2),
+                PaddingRight = UDim.new(0, 2),
+                PaddingTop = UDim.new(0, 2),
+                Parent = TabLeft,
+            })
+
+            TabRight = New("Frame", {
+                AnchorPoint = Vector2.new(1, 0),
+                AutomaticSize = Enum.AutomaticSize.Y,
+                BackgroundTransparency = 1,
+                Position = UDim2.fromScale(1, 0),
+                Size = UDim2.new(0.5, -3, 0, 0),
+                Parent = ColumnsHolder,
+            })
+
+            TabRightList = New("UIListLayout", {
+                SortOrder = Enum.SortOrder.LayoutOrder,
                 Padding = UDim.new(0, 2),
                 Parent = TabRight,
             })
+
             New("UIPadding", {
                 PaddingBottom = UDim.new(0, 2),
                 PaddingLeft = UDim.new(0, 2),
@@ -15305,18 +15354,6 @@ function Library:CreateWindow(WindowInfo)
                 PaddingTop = UDim.new(0, 2),
                 Parent = TabRight,
             })
-            do
-                New("Frame", {
-                    BackgroundTransparency = 1,
-                    LayoutOrder = -1,
-                    Parent = TabRight,
-                })
-                New("Frame", {
-                    BackgroundTransparency = 1,
-                    LayoutOrder = 1,
-                    Parent = TabRight,
-                })
-            end
         end
 
         --// Tab Table \\--
@@ -15333,6 +15370,8 @@ function Library:CreateWindow(WindowInfo)
             Window = Window,
             Button = TabButton,
             Container = TabContainer,
+            Scroll = TabScroll,
+            FullParagraphContainer = FullParagraphContainer,
             Sides = {
                 TabLeft,
                 TabRight,
@@ -15493,12 +15532,46 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Tab:RefreshSides()
-            local Offset = WarningBoxHolder.Visible and WarningBox.Size.Y.Offset + 8 or 0
-            for _, Side in Tab.Sides do
-                Side.Position = UDim2.new(Side.Position.X.Scale, 0, 0, Offset)
-                Side.Size = UDim2.new(0.5, -3, 1, -Offset)
+            if Tab.Destroyed then
+                return
             end
+
+            local Offset = WarningBoxHolder.Visible
+                and WarningBox.Size.Y.Offset + 8
+                or 0
+
+            TabScroll.Position = UDim2.fromOffset(0, Offset)
+            TabScroll.Size = UDim2.new(1, 0, 1, -Offset)
+
+            local Scale = Library.DPIScale or 1
+            if Scale <= 0 then
+                Scale = 1
+            end
+
+            local LeftHeight = TabLeft.AbsoluteSize.Y / Scale
+            local RightHeight = TabRight.AbsoluteSize.Y / Scale
+            local Height = math.ceil(math.max(LeftHeight, RightHeight))
+
+            ColumnsHolder.Size = UDim2.new(1, 0, 0, Height)
         end
+
+        table.insert(
+            Tab.Connections,
+            TabLeft:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                if not Tab.Destroyed then
+                    Tab:RefreshSides()
+                end
+            end)
+        )
+
+        table.insert(
+            Tab.Connections,
+            TabRight:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                if not Tab.Destroyed then
+                    Tab:RefreshSides()
+                end
+            end)
+        )
 
         function Tab:Resize(ResizeWarningBox: boolean?)
             if ResizeWarningBox then
@@ -16401,7 +16474,11 @@ function Library:CreateWindow(WindowInfo)
             local IsFull = Info.Side == "Full"
             local Side = (Info.Side == 2 or Info.Side == "Right") and 2 or 1
 
-            if IsFull and not Owner.FullParagraphContainer then
+            if IsFull then
+                assert(
+                    Owner.FullParagraphContainer,
+                    "Side = 'Full' requires Tab.FullParagraphContainer"
+                )
             end
 
             local ParentContainer = IsFull
