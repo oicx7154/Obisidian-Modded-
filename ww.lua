@@ -4449,33 +4449,40 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
     end
 
     UpdateHeader()
-
     if CardType == "Paragraph" then
         Card.Content = tostring(Info.Content or "")
         Card.Collapsible = Collapsible
         Card.Collapsed = Collapsible and Info.DefaultCollapsed == true
 
+        -- 外层控制实际显示高度
         local ContentViewport = New("Frame", {
             BackgroundTransparency = 1,
             ClipsDescendants = true,
             Size = UDim2.new(1, 0, 0, 0),
             LayoutOrder = 2,
-            Visible = Card.Content ~= "",
+
+            -- 即使折叠也保持可见，以便文字宽度和 TextBounds 更新。
+            -- 高度为 0 时不会显示内容。
+            Visible = true,
+
             Parent = Holder,
         })
 
-        -- The spacing goes into the cropping area and will retract together when collapsed.
+        -- 给文字一个较高的空间，避免文字测量依赖裁剪容器的高度。
+        -- 实际显示范围由 ContentViewport 控制。
         local ContentLabel = New("TextLabel", {
             BackgroundTransparency = 1,
-            AutomaticSize = Enum.AutomaticSize.Y,
-            Position = UDim2.fromOffset(0, Header.Visible and 5 or 0),
-            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.None,
+
+            Position = UDim2.fromOffset(0, 0),
+            Size = UDim2.new(1, 0, 0, 100000),
 
             Text = Card.Content,
             TextColor3 = "FontColor",
             TextSize = Info.ContentSize or 14,
             RichText = Info.RichText == true,
             TextWrapped = true,
+
             TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Top,
 
@@ -4487,6 +4494,7 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
 
         local HeightTween
         local TweenConnection
+        local TweenTarget
 
         local function StopHeightTween()
             if TweenConnection then
@@ -4498,9 +4506,25 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
                 HeightTween:Cancel()
                 HeightTween = nil
             end
+
+            TweenTarget = nil
+        end
+
+        local function UpdateArrow()
+            if not Arrow then
+                return
+            end
+
+            -- chevron-down 默认向下
+            Arrow.Rotation = Card.Collapsed and 180 or 0
+            Arrow.ImageTransparency = Card.Collapsed and 0.5 or 0
         end
 
         local function GetContentHeight()
+            if Card.Content == "" then
+                return 0
+            end
+
             local Scale = Library.DPIScale or 1
 
             if Scale <= 0 then
@@ -4508,44 +4532,39 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
             end
 
             local Gap = Header.Visible and 5 or 0
-
             local TextHeight = ContentLabel.TextBounds.Y / Scale
 
-            return math.ceil(math.max(0, TextHeight)) + Gap
+            return Gap + math.ceil(math.max(0, TextHeight))
         end
 
         local function UpdateContentPosition()
-            ContentLabel.Position = UDim2.fromOffset(
-                0,
-                Header.Visible and 5 or 0
-            )
-        end
-
-        local function UpdateArrow()
-            if Arrow then
-                -- chevron-down: expands when pointing down, collapses when pointing up
-                Arrow.Rotation = Card.Collapsed and 180 or 0
-                Arrow.ImageTransparency = Card.Collapsed and 0.5 or 0
-            end
+            local Gap = Header.Visible and 5 or 0
+            ContentLabel.Position = UDim2.fromOffset(0, Gap)
         end
 
         local function SetViewportHeight(Animate)
-            if Card.Destroyed then return end
+            if Card.Destroyed then
+                return
+            end
 
-            StopHeightTween()
             UpdateContentPosition()
             UpdateArrow()
 
-            local HasContent = Card.Content ~= ""
-            local TargetHeight = (HasContent and not Card.Collapsed)
-                and GetContentHeight()
-                or 0
+            local TargetHeight = 0
 
-            if HasContent then
-                ContentViewport.Visible = true
+            if not Card.Collapsed then
+                TargetHeight = GetContentHeight()
             end
 
-            if Animate and HasContent then
+            -- 文字边界更新时，如果动画目标没有变化，
+            -- 不要中断正在进行的动画。
+            if HeightTween and TweenTarget == TargetHeight then
+                return
+            end
+
+            StopHeightTween()
+
+            if Animate then
                 local Tween = TweenService:Create(
                     ContentViewport,
                     TweenInfo.new(
@@ -4559,8 +4578,9 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
                 )
 
                 HeightTween = Tween
+                TweenTarget = TargetHeight
 
-                TweenConnection = Tween.Completed:Connect(function(State)
+                TweenConnection = Tween.Completed:Connect(function()
                     if HeightTween ~= Tween then
                         return
                     end
@@ -4571,12 +4591,9 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
                     end
 
                     HeightTween = nil
+                    TweenTarget = nil
 
-                    if State == Enum.PlaybackState.Completed
-                        and not Card.Destroyed
-                    then
-                        ContentViewport.Visible =
-                            Card.Content ~= "" and not Card.Collapsed
+                    if not Card.Destroyed then
                         ResizeOwner()
                     end
                 end)
@@ -4584,27 +4601,31 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
                 Tween:Play()
             else
                 ContentViewport.Size = UDim2.new(1, 0, 0, TargetHeight)
-                ContentViewport.Visible = HasContent and not Card.Collapsed
                 ResizeOwner()
             end
         end
 
-        -- 覆盖通用 SetTitle：标题变化会影响内容间距。
         function Card:SetTitle(Title)
-            if self.Destroyed then return end
+            if self.Destroyed then
+                return
+            end
 
             self.Title = tostring(Title or "")
             UpdateHeader()
+
             SetViewportHeight(false)
         end
 
         function Card:SetContent(Content)
-            if self.Destroyed then return end
+            if self.Destroyed then
+                return
+            end
 
             self.Content = tostring(Content or "")
             ContentLabel.Text = self.Content
 
-            -- 折叠时仍更新文字；展开后显示新内容。
+            -- TextBounds 可能在下一次布局时才更新；
+            -- 下方的监听会再次计算高度。
             SetViewportHeight(false)
         end
 
@@ -4645,8 +4666,17 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
             end)
         end
 
-        -- 文本换行、DPI 或容器宽度变化后重新计算内容高度。
+        -- 文本内容、换行或字体布局发生变化时更新高度。
         Connect(ContentLabel:GetPropertyChangedSignal("TextBounds"), function()
+            if Card.Destroyed or Card.Collapsed then
+                return
+            end
+
+            SetViewportHeight(false)
+        end)
+
+        -- 宽度变化可能改变换行；TextBounds 更新后会再次计算。
+        Connect(ContentLabel:GetPropertyChangedSignal("AbsoluteSize"), function()
             if Card.Destroyed or Card.Collapsed then
                 return
             end
@@ -4660,13 +4690,11 @@ local function CreateCustomCard(Owner, Info, CardType, IsTab, TabCornerRadius)
 
         UpdateArrow()
 
-        -- 初次创建时文字布局可能尚未完成。
         task.defer(function()
             if not Card.Destroyed then
                 SetViewportHeight(false)
             end
         end)
-
     elseif CardType == "InfoCard" then
         Card.Items = {}
 
