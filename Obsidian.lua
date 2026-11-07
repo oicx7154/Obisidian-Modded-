@@ -10926,6 +10926,17 @@ do
             end))
         end
 
+        local function FindScrollingFrame(Instance)
+            local Parent = Instance.Parent
+            while Parent do
+                if Parent:IsA("ScrollingFrame") then
+                    return Parent
+                end
+                Parent = Parent.Parent
+            end
+            return nil
+        end
+
         local LastTap = 0
         table.insert(Slider.Connections, Bar.InputBegan:Connect(function(Input: InputObject)
             local ValidInput = IsClickInput(Input) or Input.UserInputType == Enum.UserInputType.MouseButton2
@@ -10959,14 +10970,12 @@ do
                 return
             end
 
-            if Library.ActiveTab then
-                for _, Side in Library.ActiveTab.Sides do
-                    Side.ScrollingEnabled = false
-                end
-            end
+            local ScrollFrame = FindScrollingFrame(Holder)
+            local WasScrollingEnabled
 
-            if Library.ActiveLoading and Library.ActiveLoading.Sidebar then
-                Library.ActiveLoading.Sidebar.Container.ScrollingEnabled = false
+            if ScrollFrame then
+                WasScrollingEnabled = ScrollFrame.ScrollingEnabled
+                ScrollFrame.ScrollingEnabled = false
             end
 
             while IsDragInput(Input) and not Slider.Destroyed do
@@ -10983,15 +10992,9 @@ do
 
                 RunService.RenderStepped:Wait()
             end
-
-            if Library.ActiveTab then
-                for _, Side in Library.ActiveTab.Sides do
-                    Side.ScrollingEnabled = true
-                end
-            end
-
-            if Library.ActiveLoading and Library.ActiveLoading.Sidebar then
-                Library.ActiveLoading.Sidebar.Container.ScrollingEnabled = true
+            
+            if ScrollFrame then
+            ScrollFrame.ScrollingEnabled = WasScrollingEnabled
             end
         end))
 
