@@ -102,7 +102,7 @@ Feedback 用于创建一组输入框和提交按钮，并将反馈发送到 Disc
 ## 基本用法
 
 ```lua
-local Feedback = Groupbox.fk:AddFeedback({
+local Feedback = Groupbox:AddFeedback({
     Webhook = "你的 Discord Webhook URL",
 
     -- 冷却时间，单位：秒
