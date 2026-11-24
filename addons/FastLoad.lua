@@ -1,4 +1,4 @@
-local jsonUrl = "你的JSON原始链接"
+local jsonUrl = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/QuickGame.json"
 
 return function(Tab, Library)
     local function getService(name)
