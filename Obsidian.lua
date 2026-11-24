@@ -579,8 +579,8 @@ local Templates = {
         Image = "",
         GameThumbnail = false,
         GameIcon = false,
-        GameId = false,
-        PlaceId = false,
+        GameId = "",
+        PlaceId = "",
         Transparency = 0,
         BackgroundTransparency = 0,
         Color = Color3.new(1, 1, 1),
@@ -13155,24 +13155,27 @@ do
     function Funcs:AddImage(Idx, Info)
         if self.Destroyed then return nil end
 
+        local GameIcon = Info.GameIcon
+        local GameThumbnail = Info.GameThumbnail
+        local GameId = Info.GameId
+        local PlaceId = Info.PlaceId
+
         Info = Library:Validate(Info, Templates.Image)
 
         local Groupbox = self
         local Container = Groupbox.Container
-        local GameId = Info.GameId
-        local PlaceId = Info.PlaceId
         local RequestedImage = Info.Image
-        if Info.GameIcon then
-            GameId = tonumber(GameId) or game.GameId
+        if GameIcon then
+            local Id = tonumber(GameId) or game.GameId
             RequestedImage = string.format(
                 "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
-                tostring(GameId)
+                tostring(Id)
             )
-        elseif Info.GameThumbnail then
-            PlaceId = tonumber(PlaceId) or game.PlaceId
+        elseif GameThumbnail then
+            local id = tonumber(PlaceId) or game.PlaceId
             RequestedImage = string.format(
                 "rbxthumb://type=GameThumbnail&id=%s&w=768&h=432",
-                tostring(PlaceId)
+                tostring(id)
             )
         end
         local Image = {
@@ -13236,7 +13239,7 @@ do
             ScaleType = Image.ScaleType,
             Parent = Box,
         })
-        if Info.GameThumbnail or Info.GameIcon then
+        if GameThumbnail or GameIcon then
             ImageLabel.Image = RequestedImage
             ImageLabel.ImageRectOffset = Vector2.zero
             ImageLabel.ImageRectSize = Vector2.zero
@@ -13245,6 +13248,7 @@ do
             assert(Icon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
             FillInstance(ImageContent(Icon), ImageLabel)
         end
+
         function Image:SetHeight(Height: number)
             assert(Height > 0, "Height must be greater than 0.")
 
