@@ -1,97 +1,123 @@
-local jsonUrl = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/QuickGame.json"
-
 return function(Tab, Library)
-    local function getService(name)
-        local service = game:GetService(name)
-        if type(cloneref) == "function" then
-            local ok, cloned = pcall(cloneref, service)
-            if ok and cloned then
-                return cloned
+    task.spawn(function()
+        local JsonUrl = "https://raw.githubusercontent.com/luojunjun43-del/1/refs/heads/main/QuickGame.json"
+        local function GetService(Name)
+            local Service = game:GetService(Name)
+            if type(cloneref) == "function" then
+                local Success, Cloned = pcall(cloneref, Service)
+                if Success and Cloned then
+                    return Cloned
+                end
+            end
+            return Service
+        end
+        local function Notify(Text)
+            if Library then
+                Library:Notify({
+                    Title = "快速跳转",
+                    Description = tostring(Text),
+                    Time = 5,
+                })
+            else
+                warn("[快速跳转]", Text)
             end
         end
-        return service
-    end
-    local HttpService = getService("HttpService")
-    local TeleportService = getService("TeleportService")
-    local Players = getService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    assert(Tab and Tab.ft, "未找到Tab")
-    assert(Library, "未传入 Library")
-    local ok, response = pcall(function()
-        return request({
-            Url = jsonUrl,
+        if not Tab or not Tab.ft then
+            Notify("未找到 Tab.ft")
+            return
+        end
+        if not Library then
+            warn("[快速跳转] 未传入 Library")
+            return
+        end
+        local HttpService = GetService("HttpService")
+        local TeleportService = GetService("TeleportService")
+        local LocalPlayer = GetService("Players").LocalPlayer
+        local Request = type(request) == "function" and request
+            or type(http_request) == "function" and http_request
+            or type(syn) == "table" and type(syn.request) == "function" and syn.request
+        if not Request then
+            Notify("当前环境不支持请求函数")
+            return
+        end
+        local Success, Response = pcall(Request, {
+            Url = JsonUrl,
             Method = "GET",
         })
-    end)
-    if not ok or not response or type(response.Body) ~= "string" then
-        warn("[快速跳转] JSON 请求失败：", response)
-        return
-    end
-    if response.StatusCode and (response.StatusCode < 200 or response.StatusCode >= 300) then
-        warn("[快速跳转] HTTP 状态码：", response.StatusCode)
-        return
-    end
-    local decoded, data = pcall(function()
-        return HttpService:JSONDecode(response.Body)
-    end)
-    if not decoded or type(data) ~= "table" then
-        warn("[快速跳转] JSON 解析失败：", data)
-        return
-    end
-    local addedCount = 0
-    for index, entry in ipairs(data) do
-        if type(entry) ~= "table" then
-            warn("[快速跳转] 第 " .. index .. " 项不是对象")
-            continue
+        if not Success or type(Response) ~= "table" then
+            Notify("JSON 请求失败：" .. tostring(Response))
+            return
         end
-        local name = entry.Name
-        local placeId = tonumber(entry.PlaceId)
-        local gameId = tonumber(entry.GameId)
-        if type(name) ~= "string" or name == "" then
-            warn("[快速跳转] 第 " .. index .. " 项缺少 Name")
-            continue
+        local StatusCode = tonumber(Response.StatusCode)
+        if StatusCode and (StatusCode < 200 or StatusCode >= 300) then
+            Notify("JSON 请求失败，HTTP 状态码：" .. StatusCode)
+            return
         end
-        if not placeId or placeId <= 0 or placeId % 1 ~= 0 then
-            warn("[快速跳转] " .. name .. " 的 PlaceId 无效")
-            continue
+        if type(Response.Body) ~= "string" or Response.Body == "" then
+            Notify("JSON 内容为空")
+            return
         end
-        if not gameId or gameId <= 0 or gameId % 1 ~= 0 then
-            warn("[快速跳转] " .. name .. " 的 GameId 无效")
-            continue
-        end
-        addedCount += 1
-        local group
-        if addedCount % 2 == 1 then
-            group = Tab.ft:AddLeftGroupbox(name)
-        else
-            group = Tab.ft:AddRightGroupbox(name)
-        end
-        local imageOk, imageError = pcall(function()
-            group:AddImage("游戏图标" .. index, {
-                GameIcon = true,
-                GameId = gameId,
-                Height = 180,
-                ScaleType = Enum.ScaleType.Fit,
-                BackgroundTransparency = 1
-            })
+        local Decoded, Data = pcall(function()
+            return HttpService:JSONDecode(Response.Body)
         end)
-        if not imageOk then
-            warn("[快速跳转] " .. name .. " 的图片创建失败：", imageError)
+        if not Decoded or type(Data) ~= "table" then
+            Notify("JSON 解析失败：" .. tostring(Data))
+            return
         end
-        group:AddButton("快速跳转" .. index, {
-            Text = "快速跳转",
-            Func = function()
-                local teleportOk, teleportError = pcall(function()
-                    TeleportService:Teleport(placeId, LocalPlayer)
-                end)
-                if not teleportOk then
-                    Library:Notify({
-                        Title = "提示",
-                        Description = "传送请求失败：" .. tostring(teleportError),
-                        Time = 5,
-                    })
-                end
-            end,
-        })
-    end
+        local AddedCount = 0
+        for Index, Entry in ipairs(Data) do
+            if type(Entry) ~= "table" then
+                warn("[快速跳转] 第 " .. Index .. " 项不是对象")
+                continue
+            end
+            local Name = Entry.Name
+            local PlaceId = tonumber(Entry.PlaceId)
+            local GameId = tonumber(Entry.GameId)
+            if type(Name) ~= "string" or Name == "" then
+                warn("[快速跳转] 第 " .. Index .. " 项缺少 Name")
+                continue
+            end
+            if not PlaceId or PlaceId <= 0 or PlaceId % 1 ~= 0 then
+                warn("[快速跳转] " .. Name .. " 的 PlaceId 无效")
+                continue
+            end
+            if not GameId or GameId <= 0 or GameId % 1 ~= 0 then
+                warn("[快速跳转] " .. Name .. " 的 GameId 无效")
+                continue
+            end
+            AddedCount += 1
+            local Group
+            if AddedCount % 2 == 1 then
+                Group = Tab.ft:AddLeftGroupbox(Name)
+            else
+                Group = Tab.ft:AddRightGroupbox(Name)
+            end
+            local ImageOk, ImageError = pcall(function()
+                Group:AddImage("游戏图标" .. Index, {
+                    Image = "rbxassetid://0",
+                    GameIcon = true,
+                    GameId = GameId,
+                    Height = 180,
+                    ScaleType = Enum.ScaleType.Fit,
+                    Transparency = 0,
+                    Color = Color3.new(1, 1, 1),
+                    BackgroundTransparency = 1,
+                })
+            end)
+            if not ImageOk then
+                warn("[快速跳转] " .. Name .. " 的图片创建失败：", ImageError)
+            end
+            Group:AddButton("快速跳转" .. Index, {
+                Text = "快速跳转",
+                Func = function()
+                    local TeleportOk, TeleportError = pcall(function()
+                        TeleportService:Teleport(PlaceId, LocalPlayer)
+                    end)
+                    if not TeleportOk then
+                        Notify("传送请求失败：" .. tostring(TeleportError))
+                    end
+                end,
+            })
+        end
+    end)
 end
