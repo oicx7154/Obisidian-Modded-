@@ -82,7 +82,7 @@ return function(Tab, Library)
             Text = "快速跳转",
             Func = function()
                 local teleportOk, teleportError = pcall(function()
-                    TeleportService:Teleport(placeId, {LocalPlayer})
+                    TeleportService:Teleport(placeId, LocalPlayer)
                 end)
                 if not teleportOk then
                     Library:Notify({
