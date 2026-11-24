@@ -110,6 +110,15 @@ return function(Tab, Library)
                     BackgroundTransparency = 1,
                 })
             end)
+                print(
+    "[AddImage]",
+    "标识:", Idx,
+    "GameIcon:", GameIcon,
+    "GameId:", GameId,
+    "实际地址:", ImageLabel.Image,
+    "透明度:", ImageLabel.ImageTransparency,
+    "尺寸:", ImageLabel.AbsoluteSize
+)
             if not ImageOk then
                 warn("[快速跳转] " .. Name .. " 的图片创建失败：", ImageError)
             end
