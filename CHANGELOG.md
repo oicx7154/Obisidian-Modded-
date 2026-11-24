@@ -2,12 +2,17 @@
 ## 2026-11-24
 
 ### 新增
-- AddImage 添加游戏缩略图
+- AddImage 添加游戏缩略图和头像
 ```lua
 Groupbox:AddImage("Image"{
     GameThumbnail = true,
     Height = 180,
 })
+Groupbox:AddImage("Image"{
+    GameIcon = true,
+    Height = 180,
+})
+
 ```
 
 ## 2026-11-04
