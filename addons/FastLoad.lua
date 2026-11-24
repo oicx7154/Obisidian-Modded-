@@ -68,11 +68,11 @@ return function(Tab, Library)
         end
         local imageOk, imageError = pcall(function()
             group:AddImage("游戏图标" .. index, {
-                Image = "rbxassetid://0",
                 GameIcon = true,
                 GameId = gameId,
                 Height = 180,
                 ScaleType = Enum.ScaleType.Fit,
+                BackgroundTransparency = 1
             })
         end)
         if not imageOk then
