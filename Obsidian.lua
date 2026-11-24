@@ -577,6 +577,8 @@ local Templates = {
     },
     Image = {
         Image = "",
+        GameThumbnail = false,
+        GameIcon = false,
         Transparency = 0,
         BackgroundTransparency = 0,
         Color = Color3.new(1, 1, 1),
@@ -13156,11 +13158,24 @@ do
         local Groupbox = self
         local Container = Groupbox.Container
 
+        local RequestedImage = Info.Image
+        if Info.GameIcon then
+            RequestedImage = string.format(
+                "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
+                tostring(game.GameId)
+            )
+        elseif Info.GameThumbnail then
+            RequestedImage = string.format(
+                "rbxthumb://type=GameThumbnail&id=%s&w=768&h=432",
+                tostring(game.PlaceId)
+            )
+        end
+
         local Image = {
             Connections = {},
             Destroyed = false,
 
-            Image = Info.Image,
+            Image = RequestedImage,
             Color = Info.Color,
             RectOffset = Info.RectOffset,
             RectSize = Info.RectSize,
@@ -13209,9 +13224,6 @@ do
             Parent = Box,
         })
 
-        local Icon = Library:GetCustomIcon(Image.Image)
-        assert(Icon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
-
         local ImageLabel = New("ImageLabel", {
             BackgroundTransparency = 1,
             Size = UDim2.fromScale(1, 1),
@@ -13220,8 +13232,15 @@ do
             ScaleType = Image.ScaleType,
             Parent = Box,
         })
-        FillInstance(ImageContent(Icon), ImageLabel)
-
+        if Info.GameThumbnail or Info.GameIcon then
+            ImageLabel.Image = RequestedImage
+            ImageLabel.ImageRectOffset = Vector2.zero
+            ImageLabel.ImageRectSize = Vector2.zero
+        else
+            local Icon = Library:GetCustomIcon(Image.Image)
+            assert(Icon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
+            FillInstance(ImageContent(Icon), ImageLabel)
+        end
         function Image:SetHeight(Height: number)
             assert(Height > 0, "Height must be greater than 0.")
 
@@ -13229,20 +13248,25 @@ do
             Holder.Size = UDim2.new(1, 0, 0, Height)
             Groupbox:Resize()
         end
-
         function Image:SetImage(NewImage: string)
             assert(typeof(NewImage) == "string", "Image must be a string.")
-
+            if NewImage:sub(1, 11) == "rbxthumb://" then
+                ImageLabel.Image = NewImage
+                ImageLabel.ImageRectOffset = Vector2.zero
+                ImageLabel.ImageRectSize = Vector2.zero
+                Image.RectOffset = Vector2.zero
+                Image.RectSize = Vector2.zero
+                Image.Image = NewImage
+                return
+            end
             local Icon = Library:GetCustomIcon(NewImage)
             assert(Icon, "Image must be a valid Roblox asset or a valid URL or a valid lucide icon.")
-
             Image.RectOffset = Icon.ImageRectOffset
             Image.RectSize = Icon.ImageRectSize
-
             FillInstance(ImageContent(Icon), ImageLabel)
             Image.Image = Icon.Url
         end
-
+        
         function Image:SetColor(Color: Color3)
             assert(typeof(Color) == "Color3", "Color must be a Color3 value.")
 
