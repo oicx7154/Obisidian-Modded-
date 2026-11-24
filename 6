@@ -13166,16 +13166,16 @@ do
         local Container = Groupbox.Container
         local RequestedImage = Info.Image
         if GameIcon then
-            GameId = tonumber(GameId) or game.GameId
+            GI = tonumber(GameId) or game.GameId
             RequestedImage = string.format(
                 "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
-                tostring(GameId)
+                tostring(GI)
             )
         elseif GameThumbnail then
-            PlaceId = tonumber(PlaceId) or game.PlaceId
+            PI = tonumber(PlaceId) or game.PlaceId
             RequestedImage = string.format(
                 "rbxthumb://type=GameThumbnail&id=%s&w=768&h=432",
-                tostring(PlaceId)
+                tostring(PI)
             )
         end
         local Image = {
@@ -13249,14 +13249,14 @@ do
             FillInstance(ImageContent(Icon), ImageLabel)
         end
         print(
-    "[AddImage]",
-    "标识:", Idx,
-    "GameIcon:", GameIcon,
-    "GameId:", GameId,
-    "实际地址:", ImageLabel.Image,
-    "透明度:", ImageLabel.ImageTransparency,
-    "尺寸:", ImageLabel.AbsoluteSize
-)
+            "[AddImage]",
+            "标识:", Idx,
+            "GameIcon:", GameIcon,
+            "GameId:", GameId,
+            "实际地址:", ImageLabel.Image,
+            "透明度:", ImageLabel.ImageTransparency,
+            "尺寸:", ImageLabel.AbsoluteSize
+        )
         function Image:SetHeight(Height: number)
             assert(Height > 0, "Height must be greater than 0.")
 
