@@ -12,7 +12,19 @@ Groupbox:AddImage("Image"{
     GameIcon = true,
     Height = 180,
 })
-
+```
+- 也可以自己定制图片
+```lua
+Groupbox:AddImage("Image"{
+    GameThumbnail = true,
+    PlaceId = 12345,
+    Height = 180,
+})
+Groupbox:AddImage("Image"{
+    GameIcon = true,
+    GameId = 12345,
+    Height = 180,
+})
 ```
 
 ## 2026-11-04
