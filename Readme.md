@@ -1,4 +1,7 @@
 # UI 更新日志
+## [更新日期：2026/11/24]
+- AddImage添加游戏缩略图
+- `GameThumbnail` true or false
 
 ## [更新日期：2026/11/4]
 ### CodeBlock
