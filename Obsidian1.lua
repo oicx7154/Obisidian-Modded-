@@ -578,6 +578,7 @@ local Templates = {
     Image = {
         Image = "",
         GameThumbnail = false,
+        GameIcon = false,
         Transparency = 0,
         BackgroundTransparency = 0,
         Color = Color3.new(1, 1, 1),
@@ -13158,7 +13159,12 @@ do
         local Container = Groupbox.Container
 
         local RequestedImage = Info.Image
-        if Info.GameThumbnail == true then
+        if Info.GameIcon then
+            RequestedImage = string.format(
+                "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
+                tostring(game.GameId)
+            )
+        elseif Info.GameThumbnail then
             RequestedImage = string.format(
                 "rbxthumb://type=GameThumbnail&id=%s&w=768&h=432",
                 tostring(game.PlaceId)
@@ -13226,7 +13232,7 @@ do
             ScaleType = Image.ScaleType,
             Parent = Box,
         })
-        if GameThumbnail then
+        if if Info.GameThumbnail or Info.GameIcon then
             ImageLabel.Image = RequestedImage
             ImageLabel.ImageRectOffset = Vector2.zero
             ImageLabel.ImageRectSize = Vector2.zero
