@@ -13166,16 +13166,16 @@ do
         local Container = Groupbox.Container
         local RequestedImage = Info.Image
         if GameIcon then
-            GI = tonumber(GameId) or game.GameId
+            local Id = tonumber(GameId) or game.GameId
             RequestedImage = string.format(
                 "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
-                tostring(GI)
+                tostring(Id)
             )
         elseif GameThumbnail then
-            PI = tonumber(PlaceId) or game.PlaceId
+            local id = tonumber(PlaceId) or game.PlaceId
             RequestedImage = string.format(
                 "rbxthumb://type=GameThumbnail&id=%s&w=768&h=432",
-                tostring(PI)
+                tostring(id)
             )
         end
         local Image = {
