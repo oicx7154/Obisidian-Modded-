@@ -579,6 +579,8 @@ local Templates = {
         Image = "",
         GameThumbnail = false,
         GameIcon = false,
+        GameId = false,
+        PlaceId = false,
         Transparency = 0,
         BackgroundTransparency = 0,
         Color = Color3.new(1, 1, 1),
@@ -13157,20 +13159,22 @@ do
 
         local Groupbox = self
         local Container = Groupbox.Container
-
+        local GameId = Info.GameId
+        local PlaceId = Info.PlaceId
         local RequestedImage = Info.Image
         if Info.GameIcon then
+            GameId = tonumber(GameId) or game.GameId
             RequestedImage = string.format(
                 "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
-                tostring(game.GameId)
+                tostring(GameId)
             )
         elseif Info.GameThumbnail then
+            PlaceId = tonumber(PlaceId) or game.PlaceId
             RequestedImage = string.format(
                 "rbxthumb://type=GameThumbnail&id=%s&w=768&h=432",
-                tostring(game.PlaceId)
+                tostring(PlaceId)
             )
         end
-
         local Image = {
             Connections = {},
             Destroyed = false,
