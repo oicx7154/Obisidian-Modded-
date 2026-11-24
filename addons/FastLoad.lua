@@ -92,12 +92,6 @@ return function(Tab, Library)
             else
                 Group = Tab.ft:AddRightGroupbox(Name)
             end
-                print(
-                    "[快速跳转图片]",
-                    "名称:", Name,
-                    "GameId:", GameId,
-                    "PlaceId:", PlaceId
-                )
             local ImageOk, ImageError = pcall(function()
                 Group:AddImage("游戏图标" .. Index, {
                     Image = "rbxassetid://0",
