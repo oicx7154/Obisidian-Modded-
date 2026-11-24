@@ -13236,7 +13236,14 @@ do
             ScaleType = Image.ScaleType,
             Parent = Box,
         })
-        if Info.GameThumbnail or Info.GameIcon then
+        if Info.GameIcon then
+            ImageLabel.Size = UDim2.fromOffset(150, 150)
+            ImageLabel.Position = UDim2.fromScale(0.5, 0.5)
+            ImageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+            ImageLabel.Image = RequestedImage
+            ImageLabel.ImageRectOffset = Vector2.zero
+            ImageLabel.ImageRectSize = Vector2.zero
+        elseif Info.GameThumbnail then
             ImageLabel.Image = RequestedImage
             ImageLabel.ImageRectOffset = Vector2.zero
             ImageLabel.ImageRectSize = Vector2.zero
