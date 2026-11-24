@@ -13232,7 +13232,7 @@ do
             ScaleType = Image.ScaleType,
             Parent = Box,
         })
-        if if Info.GameThumbnail or Info.GameIcon then
+        if Info.GameThumbnail or Info.GameIcon then
             ImageLabel.Image = RequestedImage
             ImageLabel.ImageRectOffset = Vector2.zero
             ImageLabel.ImageRectSize = Vector2.zero
