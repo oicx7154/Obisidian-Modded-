@@ -13165,7 +13165,7 @@ do
         if Info.GameIcon then
             GameId = tonumber(GameId) or game.GameId
             RequestedImage = string.format(
-                "rbxthumb://type=GameIcon&id=%s&w=256&h=256",
+                "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
                 tostring(GameId)
             )
         elseif Info.GameThumbnail then
@@ -13236,14 +13236,7 @@ do
             ScaleType = Image.ScaleType,
             Parent = Box,
         })
-        if Info.GameIcon then
-            ImageLabel.Size = UDim2.fromOffset(150, 150)
-            ImageLabel.Position = UDim2.fromScale(0.5, 0.5)
-            ImageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-            ImageLabel.Image = RequestedImage
-            ImageLabel.ImageRectOffset = Vector2.zero
-            ImageLabel.ImageRectSize = Vector2.zero
-        elseif Info.GameThumbnail then
+        if Info.GameThumbnail or Info.GameIcon then
             ImageLabel.Image = RequestedImage
             ImageLabel.ImageRectOffset = Vector2.zero
             ImageLabel.ImageRectSize = Vector2.zero
