@@ -13161,7 +13161,7 @@ do
         local RequestedImage = Info.Image
         if Info.GameIcon then
             RequestedImage = string.format(
-                "rbxthumb://type=GameIcon&id=%s&w=256&h=256",
+                "rbxthumb://type=GameIcon&id=%s&w=150&h=150",
                 tostring(game.GameId)
             )
         elseif Info.GameThumbnail then
